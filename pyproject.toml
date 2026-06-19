@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quiz-extractor"
+dynamic = ["version"]
+description = "Trích xuất 1 ảnh/câu từ video screen-recording quiz Moodle (cuộn)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "opencv-python>=4.8,<5",
+    "numpy>=1.24,<3",
+    "easyocr>=1.7,<2",
+]
+
+[project.optional-dependencies]
+dev = ["black", "ruff", "pytest", "mypy"]
+
+[project.scripts]
+quiz-extractor = "quiz_extractor.__main__:main"
+
+[tool.setuptools]
+packages = ["quiz_extractor"]
+
+[tool.setuptools.dynamic]
+version = { attr = "quiz_extractor.__version__" }
+
+[tool.black]
+line-length = 88
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true   # cv2/easyocr/torch không có type stub
+warn_unused_ignores = true
+exclude = "tests/"
