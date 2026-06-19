@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "quiz-extractor"
+name = "moodle-quiz-extractor"
 dynamic = ["version"]
 description = "Trích xuất 1 ảnh/câu từ video screen-recording quiz Moodle (cuộn)"
 readme = "README.md"
@@ -19,7 +19,7 @@ dependencies = [
 dev = ["black", "ruff", "pytest", "mypy"]
 
 [project.scripts]
-quiz-extractor = "quiz_extractor.__main__:main"
+moodle-quiz-extractor = "quiz_extractor.__main__:main"
 
 [tool.setuptools]
 packages = ["quiz_extractor"]

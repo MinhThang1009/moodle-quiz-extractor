@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎯 quiz-extractor
+# 🎯 moodle-quiz-extractor
 
 **Trích xuất mỗi câu hỏi thành 1 ảnh riêng từ video screen-recording quiz Moodle**
 

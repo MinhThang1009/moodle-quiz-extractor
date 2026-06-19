@@ -1,4 +1,4 @@
-# Đóng góp cho quiz-extractor
+# Đóng góp cho moodle-quiz-extractor
 
 Cảm ơn bạn đã quan tâm! Tài liệu này mô tả quy trình đóng góp.
 
