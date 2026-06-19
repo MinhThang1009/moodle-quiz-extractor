@@ -27,5 +27,5 @@ phiên bản tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 - Không trích được nội dung **chưa từng được quay** (vd: đáp án câu cuối nếu người quay tắt recording sớm).
 - Đoạn cuộn quá nhanh bị motion blur → ảnh chọn ra kém nét hơn.
 
-[Unreleased]: https://example.com/compare/v1.0.0...HEAD
-[1.0.0]: https://example.com/releases/tag/v1.0.0
+[Unreleased]: https://github.com/MinhThang1009/moodle-quiz-extractor/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/MinhThang1009/moodle-quiz-extractor/releases/tag/v1.0.0

@@ -6,6 +6,7 @@
 
 _Không sót câu · Không lặp ảnh · Cắt khít từng câu · Chạy được mọi video cùng template_
 
+[![CI](https://github.com/MinhThang1009/moodle-quiz-extractor/actions/workflows/ci.yml/badge.svg)](https://github.com/MinhThang1009/moodle-quiz-extractor/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![OCR](https://img.shields.io/badge/OCR-EasyOCR-orange)
@@ -20,6 +21,7 @@ _Không sót câu · Không lặp ảnh · Cắt khít từng câu · Chạy đ�
 
 - [Vấn đề](#vấn-đề)
 - [Tính năng](#tính-năng)
+- [Demo](#demo)
 - [Yêu cầu](#yêu-cầu)
 - [Cài đặt](#cài-đặt)
 - [Sử dụng](#sử-dụng)
@@ -35,8 +37,8 @@ _Không sót câu · Không lặp ảnh · Cắt khít từng câu · Chạy đ�
 
 Khi quay màn hình một bài quiz Moodle (màn hình **cuộn liên tục**), việc cắt thủ công
 từng câu rất mất công, và các cách tự động đơn giản (lấy frame theo nhịp, bắt lúc dừng
-đọc) thường **sót câu** hoặc **lặp ảnh**. `quiz-extractor` giải đúng bài toán này: mỗi
-câu hỏi → đúng **một ảnh** sạch, đầy đủ.
+đọc) thường **sót câu** hoặc **lặp ảnh**. `moodle-quiz-extractor` giải đúng bài toán
+này: mỗi câu hỏi → đúng **một ảnh** sạch, đầy đủ.
 
 ## Tính năng
 
@@ -46,6 +48,14 @@ câu hỏi → đúng **một ảnh** sạch, đầy đủ.
 - ✅ **Cắt khít** — mỗi ảnh đúng 1 block (header + đề + đáp án), tự bỏ lưới nav và header câu kế.
 - ✅ **Portable** — bám cấu trúc *text* Moodle + ngưỡng theo tỉ lệ `H/W` → chạy mọi video cùng template, mọi độ phân giải, không sửa code.
 - ✅ **Cache OCR** — lần đầu OCR vài phút, lần sau gần như tức thì.
+
+## Demo
+
+Mỗi câu hỏi được cắt thành 1 ảnh riêng — đầy đủ header + đề + đáp án:
+
+<p align="center">
+  <img src="docs/demo.png" alt="Ví dụ một câu hỏi được trích xuất" width="320">
+</p>
 
 ## Yêu cầu
 
