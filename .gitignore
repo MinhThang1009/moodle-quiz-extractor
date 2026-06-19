@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Virtualenv
+.venv/
+venv/
+
+# Dữ liệu & kết quả (sinh ra được, không commit)
+data/*.mp4
+output/
+*.pkl
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/

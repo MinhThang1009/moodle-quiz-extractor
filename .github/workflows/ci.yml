@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint, format & types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cài công cụ
+        run: pip install black ruff mypy
+      - name: black --check
+        run: black --check .
+      - name: ruff check
+        run: ruff check .
+      - name: mypy
+        run: mypy quiz_extractor
+
+  test:
+    name: Test (pytest)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cài deps tối thiểu (không cần easyocr/torch cho unit test)
+        run: pip install numpy opencv-python-headless pytest
+      - name: pytest
+        run: pytest
+      - name: CLI --help (smoke)
+        run: python -m quiz_extractor --help

@@ -1,0 +1,5 @@
+# Chuẩn hoá line-ending: text -> LF trong repo, ảnh là binary
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.mp4 binary
