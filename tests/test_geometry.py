@@ -15,5 +15,5 @@ def test_larger_video_scales_up():
     small = Geom(1040, 480)
     big = Geom(2080, 960)
     assert big.pair_min > small.pair_min
-    assert big.tail_room > small.tail_room
+    assert big.pair_max > small.pair_max
     assert big.fx1 > small.fx1

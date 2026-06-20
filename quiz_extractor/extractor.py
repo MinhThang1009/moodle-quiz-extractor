@@ -54,18 +54,10 @@ def _pick_source(number_cands: list, frames: list, geo: Geom):
         )
         return idx, y1, y2
 
-    roomy = [
-        (idx, y1) for (idx, y1, _, _) in number_cands if geo.H - y1 >= geo.tail_room
-    ]
-    if roomy:
-        idx, y1 = max(
-            roomy,
-            key=lambda c: block_sharpness(
-                cv2.cvtColor(frames[c[0]], cv2.COLOR_BGR2GRAY), c[1], geo.H, geo
-            ),
-        )
-    else:
-        y1, idx = min((y1, idx) for (idx, y1, _, _) in number_cands)
+    # Câu dài / câu cuối: không có header kế -> chọn frame header CAO NHẤT (y1 nhỏ
+    # nhất = chỗ trống dưới nhiều nhất) để lọt CẢ block; độ nét tinh chỉnh sau bằng
+    # sharpest_neighbor. (Ưu tiên không-cắt hơn là nét.)
+    y1, idx = min((y1, idx) for (idx, y1, _, _) in number_cands)
     return idx, y1, geo.H
 
 
