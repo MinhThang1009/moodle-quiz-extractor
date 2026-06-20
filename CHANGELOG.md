@@ -7,6 +7,13 @@ phiên bản tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 
 ## [Unreleased]
 
+### Added
+- Lệnh `quiz_extractor.to_text`: OCR ảnh câu sang text có cấu trúc (`questions.json` + `.md`),
+  2 engine — `easyocr` (offline, mặc định) và `llm` (Anthropic vision, chính xác hơn).
+
+### Fixed
+- Câu dài/cuối trang không còn bị cắt đáp án: tail chọn frame header cao nhất (đủ chỗ cả block).
+
 ## [1.0.0] - 2026-06-19
 
 ### Added

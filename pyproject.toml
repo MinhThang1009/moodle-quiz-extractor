@@ -17,6 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["black", "ruff", "pytest", "mypy"]
+llm = ["anthropic>=0.40"]  # cho engine --engine llm (vision OCR)
 
 [project.scripts]
 moodle-quiz-extractor = "quiz_extractor.__main__:main"

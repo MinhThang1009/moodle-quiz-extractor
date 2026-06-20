@@ -25,6 +25,7 @@ _Không sót câu · Không lặp ảnh · Cắt khít từng câu · Chạy đ�
 - [Yêu cầu](#yêu-cầu)
 - [Cài đặt](#cài-đặt)
 - [Sử dụng](#sử-dụng)
+- [Xuất text (OCR ảnh câu)](#xuất-text-ocr-ảnh-câu)
 - [Cách hoạt động](#cách-hoạt-động)
 - [Cấu trúc dự án](#cấu-trúc-dự-án)
 - [Giới hạn](#giới-hạn)
@@ -92,6 +93,24 @@ python -m quiz_extractor --force-ocr
 | `--force-ocr` | `false` | Xoá cache, OCR lại từ đầu |
 
 Kết quả: `output/questions/question-01.png`, `question-02.png`, …
+
+## Xuất text (OCR ảnh câu)
+
+Chuyển 42 ảnh câu thành text có cấu trúc (`output/questions.json` + `questions.md`):
+
+```bash
+# Mặc định: easyocr (offline, ~95%, sai dấu lác đác) — không thêm dep
+python -m quiz_extractor.to_text
+
+# Chính xác hơn: vision LLM (Anthropic) — cần ANTHROPIC_API_KEY + có chi phí
+pip install "anthropic>=0.40"
+export ANTHROPIC_API_KEY=sk-ant-...        # Windows: $env:ANTHROPIC_API_KEY="..."
+python -m quiz_extractor.to_text --engine llm                 # model mặc định claude-opus-4-8
+python -m quiz_extractor.to_text --engine llm --model claude-haiku-4-5   # rẻ hơn
+```
+
+> OCR không bao giờ exact 100% (dấu tiếng Việt) — nên rà lại. Engine `llm` đọc dấu +
+> bố cục a/b/c/d chính xác hơn nhiều nhưng gửi ảnh ra API.
 
 ## Cách hoạt động
 
