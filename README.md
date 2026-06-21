@@ -26,6 +26,7 @@ _Không sót câu · Không lặp ảnh · Cắt khít từng câu · Chạy đ�
 - [Cài đặt](#cài-đặt)
 - [Sử dụng](#sử-dụng)
 - [Xuất text (OCR ảnh câu)](#xuất-text-ocr-ảnh-câu)
+- [Tự động hóa (watcher)](#tự-động-hóa-watcher)
 - [Cách hoạt động](#cách-hoạt-động)
 - [Cấu trúc dự án](#cấu-trúc-dự-án)
 - [Giới hạn](#giới-hạn)
@@ -111,6 +112,21 @@ python -m quiz_extractor.to_text --engine llm --model claude-haiku-4-5   # rẻ 
 
 > OCR không bao giờ exact 100% (dấu tiếng Việt) — nên rà lại. Engine `llm` đọc dấu +
 > bố cục a/b/c/d chính xác hơn nhiều nhưng gửi ảnh ra API.
+
+## Tự động hóa (watcher)
+
+Thả video vào `data/` rồi đi làm việc khác — watcher tự trích ảnh (+ OCR text) ra
+`output/<tên-video>/`:
+
+```bash
+python -m quiz_extractor.watch                  # theo dõi data/, OCR easyocr
+python -m quiz_extractor.watch --to-text none   # chỉ trích ảnh, không OCR
+python -m quiz_extractor.watch --to-text llm    # OCR vision LLM
+python -m quiz_extractor.watch --once           # quét 1 lượt rồi thoát (cho cron)
+```
+
+Quét bằng polling (mặc định mỗi 5s, không cần dep), chờ file copy xong mới chạy, bỏ qua
+video đã có kết quả (dùng `--reprocess` để chạy lại). `Ctrl+C` để dừng.
 
 ## Cách hoạt động
 

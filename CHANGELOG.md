@@ -10,6 +10,8 @@ phiên bản tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 ### Added
 - Lệnh `quiz_extractor.to_text`: OCR ảnh câu sang text có cấu trúc (`questions.json` + `.md`),
   2 engine — `easyocr` (offline, mặc định) và `llm` (Anthropic vision, chính xác hơn).
+- Lệnh `quiz_extractor.watch`: watcher (polling) tự chạy pipeline khi có video mới trong
+  `data/` -> `output/<tên-video>/`; cờ `--to-text`, `--once`, `--reprocess`.
 
 ### Fixed
 - Câu dài/cuối trang không còn bị cắt đáp án: tail chọn frame header cao nhất (đủ chỗ cả block).
