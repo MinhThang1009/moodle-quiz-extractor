@@ -71,17 +71,21 @@ def parse_headers(detections, geo: Geom) -> list:
     Gộp trường hợp OCR tách "Question" và số thành 2 box cạnh nhau, và suy số cho
     header "Question" mà OCR trượt mất số (vd số "1" đơn lẻ mảnh khó đọc).
     """
-    items, qword, nums = [], [], []
+    items, qword, nums, marker_ys = [], [], [], []
     for bbox, txt, _ in detections:
         y, x = bbox[0][1], bbox[0][0]
         token = txt.strip().lower()
         matched = cfg.QUESTION_RE.fullmatch(token)
         if matched:
             items.append((int(matched.group(1)), y))
-        elif token == "question":
-            qword.append((y, x))
+        elif token == "question" and x <= geo.head_xleft:
+            qword.append(
+                (y, x)
+            )  # mép trái -> header thật; loại "question" của "Flag question"
         elif re.fullmatch(r"\d{1,3}", token):
             nums.append((y, x, int(token)))
+        if any(mk in token for mk in cfg.QUIZ_MARKERS):
+            marker_ys.append(y)  # dòng "Marked out of"/"Not yet"/"Flag question"
     orphans = []  # "Question" không ghép được số
     for qy, qx in qword:
         near = [
@@ -104,6 +108,12 @@ def parse_headers(detections, geo: Geom) -> list:
             inferred = n_near - 1 if oy < y_near else n_near + 1
             if inferred >= 1:
                 items.append((inferred, oy))
+    # Anchor: header thật phải có marker grey-box ngay dưới (loại false-header).
+    items = [
+        (n, y)
+        for (n, y) in items
+        if any(y < my <= y + geo.head_span for my in marker_ys)
+    ]
     earliest: dict[int, float] = {}
     for number, y in items:
         if number not in earliest or y < earliest[number]:

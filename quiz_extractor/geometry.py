@@ -12,6 +12,8 @@ class Geom:
         self.pair_max = int(cfg.F_PAIR_MAX * height)
         self.head_ytol = int(cfg.F_HEAD_YTOL * height)
         self.head_xdist = int(cfg.F_HEAD_XDIST * width)
+        self.head_xleft = int(cfg.F_HEAD_XLEFT * width)
+        self.head_span = int(cfg.F_HEAD_SPAN * height)
         self.fx0 = int(cfg.F_FEAT_X0 * width)
         self.fx1 = int(cfg.F_FEAT_X1 * width)
         self.top_margin = int(cfg.F_TOP_MARGIN * height)

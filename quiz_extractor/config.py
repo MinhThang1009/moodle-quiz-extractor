@@ -27,6 +27,12 @@ F_CONTENT_BOT = 0.827  # mép dưới vùng content (tỉ lệ H)
 F_PAIR_MIN, F_PAIR_MAX = 0.30, 0.74  # chiều cao block hợp lệ khi có header kế (theo H)
 F_HEAD_YTOL = 0.02  # dung sai y khi ghép 'Question'+số (theo H)
 F_HEAD_XDIST = 0.31  # khoảng cách x tối đa khi ghép 'Question'+số (theo W)
+F_HEAD_XLEFT = (
+    0.12  # 'Question' chỉ là header nếu ở mép trái (loại 'Flag question') (theo W)
+)
+F_HEAD_SPAN = (
+    0.13  # header thật phải có marker (Marked out of/Not yet) ngay dưới (theo H)
+)
 F_FEAT_X0, F_FEAT_X1 = 0.03, 0.83  # cột tính sharpness, né nút record nổi (theo W)
 F_TOP_MARGIN = 0.006  # chừa mép trên header khi cắt (theo H)
 F_INCOMPLETE = 0.25  # ảnh câu thấp hơn ngưỡng này (theo H) -> nghi thiếu nội dung
@@ -46,6 +52,8 @@ _OVERRIDABLE_FLOAT = (
     "F_PAIR_MAX",
     "F_HEAD_YTOL",
     "F_HEAD_XDIST",
+    "F_HEAD_XLEFT",
+    "F_HEAD_SPAN",
     "F_FEAT_X0",
     "F_FEAT_X1",
     "F_TOP_MARGIN",

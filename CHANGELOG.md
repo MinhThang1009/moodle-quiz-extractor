@@ -29,6 +29,10 @@ phiên bản tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 
 ### Fixed
 - Câu dài/cuối trang không còn bị cắt đáp án: tail chọn frame header cao nhất (đủ chỗ cả block).
+- **Nhiều câu mất dòng "Question N"**: chữ "question" trong "Flag question" bị nhận nhầm thành
+  header (rồi gán số) → chọn nhầm frame có header bị cắt. Sửa 2 lớp: (1) **anchor cấu trúc** —
+  "Question" chỉ là header thật nếu có marker grey-box (Marked out of/Not yet) ngay dưới
+  (`F_HEAD_SPAN`); (2) chỉ nhận "Question" ở mép trái (`F_HEAD_XLEFT`).
 
 ## [1.0.0] - 2026-06-19
 

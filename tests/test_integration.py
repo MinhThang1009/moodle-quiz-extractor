@@ -36,13 +36,14 @@ class _FakeReader:
         pass
 
     def readtext(self, img, detail=1, paragraph=False):
-        # Cố định: Question 1 @y40 (+ marker) và Question 2 @y300 cho mọi frame.
+        # Cố định: Question 1 @y40 và Question 2 @y300, mỗi câu kèm marker grey-box.
         return [
             (_box(25, 40), "Question", 0.9),
             (_box(83, 40), "1", 0.9),
             (_box(25, 70), "Marked out of 1.00", 0.9),
             (_box(25, 300), "Question", 0.9),
             (_box(83, 300), "2", 0.9),
+            (_box(25, 330), "Marked out of 1.00", 0.9),
         ]
 
 
