@@ -6,6 +6,7 @@ Cache phụ thuộc (video size, STEP). Lệch -> tự OCR lại.
 import logging
 import pickle
 import re
+import sys
 from pathlib import Path
 
 import cv2
@@ -14,6 +15,8 @@ from . import config as cfg
 from .geometry import Geom
 
 logger = logging.getLogger(__name__)
+
+SAVE_EVERY = 40  # lưu cache mỗi N frame đã OCR (cache resume thông minh)
 
 
 def load_frames(video_path: Path) -> list:
@@ -87,41 +90,98 @@ def _is_quiz_frame(detections, headers) -> bool:
     return any(marker in text for marker in cfg.QUIZ_MARKERS)
 
 
+def _read_cache(cache_path: Path) -> dict | None:
+    if not cache_path.exists():
+        return None
+    try:
+        with open(cache_path, "rb") as fh:
+            cached = pickle.load(fh)
+        return cached if isinstance(cached, dict) else None
+    except (pickle.UnpicklingError, EOFError, OSError):
+        return None
+
+
+def _matches(cached: dict, geo: Geom, step: int) -> bool:
+    return (
+        cached.get("h") == geo.H
+        and cached.get("w") == geo.W
+        and cached.get("step") == step
+    )
+
+
+def _is_complete(cached: dict) -> bool:
+    # Cache cũ (không có khóa "next") coi như đã hoàn tất.
+    return bool(cached.get("complete", "next" not in cached))
+
+
+def _save_cache(cache_path, geo, step, data, next_idx, complete) -> None:
+    """Ghi cache nguyên tử (tmp + replace) để Ctrl+C giữa chừng không làm hỏng file."""
+    payload = {
+        "h": geo.H,
+        "w": geo.W,
+        "step": step,
+        "data": data,
+        "next": next_idx,
+        "complete": complete,
+    }
+    tmp = cache_path.with_suffix(".tmp")
+    with open(tmp, "wb") as fh:
+        pickle.dump(payload, fh)
+    tmp.replace(cache_path)
+
+
+def _progress(done: int, total: int, idx: int, headers: list) -> None:
+    """In tiến độ OCR dạng stream (1 dòng cập nhật tại chỗ)."""
+    nums = ",".join(str(n) for n, _ in headers) if headers else "-"
+    pct = 100.0 * done / total if total else 100.0
+    sys.stdout.write(
+        f"\rOCR {done:4d}/{total} ({pct:5.1f}%) frame {idx:5d}  câu[{nums}]      "
+    )
+    sys.stdout.flush()
+
+
 def build_cache(frames: list, geo: Geom, cache_path: Path, step: int) -> list:
-    """OCR mỗi `step` frame, giữ lại frame quiz, lưu (idx, headers) ra cache."""
+    """OCR mỗi `step` frame, giữ frame quiz. Stream tiến độ + cache resume."""
     import easyocr  # import muộn: nặng (torch)
 
+    cache_path.parent.mkdir(parents=True, exist_ok=True)  # tạo folder ngay
+    total = len(range(0, len(frames), step))
+
+    # Resume nếu có cache DỞ khớp (size, step) -> tiếp tục từ frame còn lại.
+    start, data = 0, []
+    cached = _read_cache(cache_path)
+    if cached and _matches(cached, geo, step) and not _is_complete(cached):
+        start = int(cached.get("next", 0))
+        data = list(cached.get("data", []))
+        logger.info("Tiếp tục OCR từ frame %d (đã có %d câu).", start, len(data))
+
     reader = easyocr.Reader(list(cfg.OCR_LANGS), gpu=False, verbose=False)
-    data, done = [], 0
-    for idx in range(0, len(frames), step):
+    done = start // step  # số sample đã xong trước đó
+    for k, idx in enumerate(range(start, len(frames), step), 1):
         detections = reader.readtext(frames[idx], detail=1, paragraph=False)
         headers = parse_headers(detections, geo)
-        if not _is_quiz_frame(detections, headers):
-            continue
-        data.append((idx, headers))
+        if _is_quiz_frame(detections, headers):
+            data.append((idx, headers))
         done += 1
-        if done % 40 == 0:
-            logger.info("...OCR %d frame quiz", done)
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"h": geo.H, "w": geo.W, "step": step, "data": data}
-    with open(cache_path, "wb") as fh:
-        pickle.dump(payload, fh)
+        _progress(done, total, idx, headers)
+        if k % SAVE_EVERY == 0:
+            _save_cache(cache_path, geo, step, data, idx + step, False)
+
+    _save_cache(cache_path, geo, step, data, len(frames), True)
+    sys.stdout.write("\n")
+    sys.stdout.flush()
     logger.info("Đã cache %d frame quiz -> %s", len(data), cache_path)
     return data
 
 
 def load_or_build_cache(frames: list, geo: Geom, cache_path: Path, step: int) -> list:
-    """Dùng cache nếu khớp (size, step); ngược lại OCR lại."""
-    if cache_path.exists():
-        with open(cache_path, "rb") as fh:
-            cached = pickle.load(fh)
-        if (
-            isinstance(cached, dict)
-            and cached.get("h") == geo.H
-            and cached.get("w") == geo.W
-            and cached.get("step") == step
-        ):
+    """Dùng cache nếu khớp & hoàn tất; cache dở -> OCR tiếp; lệch -> OCR lại."""
+    cached = _read_cache(cache_path)
+    if cached and _matches(cached, geo, step):
+        if _is_complete(cached):
             logger.info("Dùng cache %s.", cache_path)
             return cached["data"]
+        logger.info("Cache còn dở -> tiếp tục OCR.")
+    elif cached:
         logger.info("Cache lệch (độ phân giải/STEP) -> OCR lại.")
     return build_cache(frames, geo, cache_path, step)

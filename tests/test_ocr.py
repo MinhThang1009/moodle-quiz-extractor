@@ -1,9 +1,38 @@
 """parse_headers: nhận diện/gộp header "Question N", bỏ số nhiễu, sort + dedup."""
 
+import pickle
+
 from quiz_extractor.geometry import Geom
-from quiz_extractor.ocr import parse_headers
+from quiz_extractor.ocr import (
+    _is_complete,
+    _matches,
+    _read_cache,
+    _save_cache,
+    parse_headers,
+)
 
 GEO = Geom(1040, 480)
+
+
+def test_cache_roundtrip_and_resume_flags(tmp_path):
+    cp = tmp_path / "c.pkl"
+    _save_cache(cp, GEO, 4, [(0, [(1, 10)])], next_idx=8, complete=False)
+    cached = _read_cache(cp)
+    assert _matches(cached, GEO, 4)
+    assert not _is_complete(cached) and cached["next"] == 8  # cache dở -> resume
+    _save_cache(cp, GEO, 4, [(0, [(1, 10)])], next_idx=999, complete=True)
+    assert _is_complete(_read_cache(cp))
+
+
+def test_legacy_cache_treated_complete(tmp_path):
+    cp = tmp_path / "c.pkl"
+    with open(cp, "wb") as fh:  # cache cũ: không có khóa next/complete
+        pickle.dump({"h": 1040, "w": 480, "step": 4, "data": []}, fh)
+    assert _is_complete(_read_cache(cp))
+
+
+def test_read_cache_missing_returns_none(tmp_path):
+    assert _read_cache(tmp_path / "nope.pkl") is None
 
 
 def det(text, x, y):

@@ -13,6 +13,11 @@ phiên bản tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 - Lệnh `quiz_extractor.watch`: watcher (polling) tự chạy pipeline khi có video mới trong
   `data/` -> `output/<tên-video>/`; cờ `--to-text`, `--once`, `--reprocess`.
 
+### Changed
+- OCR build_cache: in tiến độ dạng stream (1 dòng cập nhật tại chỗ) + tạo thư mục output ngay.
+- **Cache resume thông minh**: lưu cache tăng dần (mỗi 40 frame, ghi nguyên tử), Ctrl+C giữa
+  chừng -> chạy lại tiếp tục đúng chỗ thay vì OCR lại từ đầu.
+
 ### Fixed
 - Câu dài/cuối trang không còn bị cắt đáp án: tail chọn frame header cao nhất (đủ chỗ cả block).
 
