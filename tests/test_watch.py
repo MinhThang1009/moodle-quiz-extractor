@@ -2,7 +2,20 @@
 
 from pathlib import Path
 
-from quiz_extractor.watch import _outputs
+from quiz_extractor.watch import _already_done, _outputs
+
+
+def test_already_done_true_when_pngs_exist(tmp_path):
+    video = tmp_path / "1.mp4"
+    qdir = tmp_path / "1" / "questions"
+    qdir.mkdir(parents=True)
+    (qdir / "question-01.png").write_bytes(b"x")
+    assert _already_done(tmp_path, video, reprocess=False) is True
+    assert _already_done(tmp_path, video, reprocess=True) is False  # --reprocess
+
+
+def test_already_done_false_when_no_output(tmp_path):
+    assert _already_done(tmp_path, tmp_path / "2.mp4", reprocess=False) is False
 
 
 def test_outputs_paths():

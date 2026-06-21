@@ -11,8 +11,10 @@ mới/đã đổi, chờ file copy xong (size ổn định) trước khi chạy.
 
 import argparse
 import logging
+import os
 import sys
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 from . import config as cfg
@@ -41,6 +43,23 @@ def _is_stable(video: Path, secs: float) -> bool:
         return False
 
 
+def _already_done(out_root: Path, video: Path, reprocess: bool) -> bool:
+    """True nếu video đã có ảnh câu -> bỏ qua (trừ khi --reprocess)."""
+    if reprocess:
+        return False
+    return any(_outputs(out_root, video)[1].glob("*.png"))
+
+
+def _worker_init(threads: int) -> None:
+    """Init worker pool: UTF-8, tắt progress \\r, giới hạn thread/worker."""
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
+    os.environ["QUIZ_QUIET_PROGRESS"] = "1"
+    os.environ["OMP_NUM_THREADS"] = str(threads)
+    logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stdout)
+
+
 def process_video(
     video: Path, out_root: Path, step: int, to_text: str, model: str
 ) -> None:
@@ -64,6 +83,29 @@ def watch(
     stable: float,
     reprocess: bool,
     once: bool,
+    workers: int,
+) -> None:
+    if workers > 1:
+        _watch_parallel(
+            input_dir,
+            out_root,
+            step,
+            to_text,
+            model,
+            interval,
+            stable,
+            reprocess,
+            once,
+            workers,
+        )
+    else:
+        _watch_sequential(
+            input_dir, out_root, step, to_text, model, interval, stable, reprocess, once
+        )
+
+
+def _watch_sequential(
+    input_dir, out_root, step, to_text, model, interval, stable, reprocess, once
 ) -> None:
     seen: dict[Path, float] = {}  # video -> mtime đã xử lý
     logger.info("Theo dõi %s/ (mỗi %.0fs). Ctrl+C để dừng.", input_dir, interval)
@@ -72,8 +114,7 @@ def watch(
             mtime = video.stat().st_mtime
             if seen.get(video) == mtime:
                 continue
-            _, questions_dir, _ = _outputs(out_root, video)
-            if not reprocess and any(questions_dir.glob("*.png")):
+            if _already_done(out_root, video, reprocess):
                 seen[video] = mtime  # đã có kết quả -> bỏ qua
                 continue
             if not _is_stable(video, stable):
@@ -86,6 +127,79 @@ def watch(
         if once:
             return
         time.sleep(interval)
+
+
+def _watch_parallel(
+    input_dir,
+    out_root,
+    step,
+    to_text,
+    model,
+    interval,
+    stable,
+    reprocess,
+    once,
+    workers,
+) -> None:
+    threads = max(1, (os.cpu_count() or 4) // workers)
+    ex = ProcessPoolExecutor(
+        max_workers=workers, initializer=_worker_init, initargs=(threads,)
+    )
+    seen: dict[Path, float] = {}
+    inflight: dict[Path, tuple] = {}  # video -> (future, mtime)
+    logger.info(
+        "Theo dõi %s/ — song song %d video. Ctrl+C để dừng.", input_dir, workers
+    )
+    try:
+        if once:
+            vids = [
+                v
+                for v in sorted(input_dir.glob("*.mp4"))
+                if not _already_done(out_root, v, reprocess) and _is_stable(v, stable)
+            ]
+            futs = {
+                ex.submit(process_video, v, out_root, step, to_text, model): v
+                for v in vids
+            }
+            for v in vids:
+                logger.info("▶ Bắt đầu %s", v.name)
+            for fut in as_completed(futs):
+                _reap(fut, futs[fut])
+            return
+        while True:
+            for video in sorted(input_dir.glob("*.mp4")):
+                if video in inflight:
+                    continue
+                mtime = video.stat().st_mtime
+                if seen.get(video) == mtime:
+                    continue
+                if _already_done(out_root, video, reprocess):
+                    seen[video] = mtime
+                    continue
+                if not _is_stable(video, stable):
+                    continue
+                inflight[video] = (
+                    ex.submit(process_video, video, out_root, step, to_text, model),
+                    mtime,
+                )
+                logger.info("▶ Bắt đầu %s", video.name)
+            for video in list(inflight):
+                fut, mtime = inflight[video]
+                if fut.done():
+                    _reap(fut, video)
+                    seen[video] = mtime
+                    del inflight[video]
+            time.sleep(interval)
+    finally:
+        ex.shutdown(wait=True)
+
+
+def _reap(fut, video: Path) -> None:
+    try:
+        fut.result()
+        logger.info("✓ Xong %s", video.name)
+    except Exception:  # noqa: BLE001 - 1 video lỗi không làm chết batch
+        logger.exception("Lỗi khi xử lý %s", video.name)
 
 
 def main() -> None:
@@ -132,6 +246,12 @@ def main() -> None:
         "--once", action="store_true", help="Quét 1 lượt rồi thoát (không lặp)"
     )
     parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="Số video xử lý song song (>1 = process pool)",
+    )
+    parser.add_argument(
         "--config",
         type=Path,
         default=None,
@@ -152,6 +272,7 @@ def main() -> None:
             args.stable,
             args.reprocess,
             args.once,
+            args.workers,
         )
     except KeyboardInterrupt:
         logger.info("Đã dừng watcher.")

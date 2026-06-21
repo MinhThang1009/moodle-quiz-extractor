@@ -17,6 +17,8 @@ phiên bản tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 - **GPU auto-detect**: easyocr tự dùng CUDA/MPS nếu có (nhanh hơn nhiều), fallback CPU.
 - Cảnh báo (WARNING) nổi bật khi **thiếu câu** hoặc câu **thiếu nội dung** (ảnh quá ngắn).
 - Integration test thật: chạy `extract_questions` trên video tổng hợp (chỉ mock OCR).
+- `quiz_extractor.watch --workers N`: xử lý nhiều video **song song** (process pool, mỗi
+  worker giới hạn thread để khỏi tranh CPU); vẫn bỏ qua video đã có kết quả.
 
 ### Changed
 - OCR build_cache: in tiến độ dạng stream (1 dòng cập nhật tại chỗ) + tạo thư mục output ngay.

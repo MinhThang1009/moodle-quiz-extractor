@@ -4,6 +4,7 @@ Cache phụ thuộc (video size, STEP). Lệch -> tự OCR lại.
 """
 
 import logging
+import os
 import pickle
 import re
 import sys
@@ -159,7 +160,9 @@ def _save_cache(cache_path, geo, step, data, next_idx, complete) -> None:
 
 
 def _progress(done: int, total: int, idx: int, headers: list) -> None:
-    """In tiến độ OCR dạng stream (1 dòng cập nhật tại chỗ)."""
+    """In tiến độ OCR dạng stream (1 dòng cập nhật tại chỗ); im khi chạy song song."""
+    if os.environ.get("QUIZ_QUIET_PROGRESS"):
+        return
     nums = ",".join(str(n) for n, _ in headers) if headers else "-"
     pct = 100.0 * done / total if total else 100.0
     sys.stdout.write(

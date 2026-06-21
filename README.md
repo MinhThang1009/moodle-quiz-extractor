@@ -144,10 +144,13 @@ python -m quiz_extractor.watch                  # theo dõi data/, OCR easyocr
 python -m quiz_extractor.watch --to-text none   # chỉ trích ảnh, không OCR
 python -m quiz_extractor.watch --to-text llm    # OCR vision LLM
 python -m quiz_extractor.watch --once           # quét 1 lượt rồi thoát (cho cron)
+python -m quiz_extractor.watch --workers 2      # xử lý 2 video song song
 ```
 
-Quét bằng polling (mặc định mỗi 5s, không cần dep), chờ file copy xong mới chạy, bỏ qua
-video đã có kết quả (dùng `--reprocess` để chạy lại). `Ctrl+C` để dừng.
+Nhiều video: thả nhiều `.mp4` vào `data/`, mỗi cái ra `output/<tên-video>/` riêng (cache
+riêng). Quét bằng polling (mặc định mỗi 5s, không cần dep), chờ file copy xong mới chạy,
+**bỏ qua video đã có kết quả** (dùng `--reprocess` để chạy lại). `--workers N` chạy N video
+song song (mỗi video 1 process, ~1.5GB RAM/process; mặc định 1 = tuần tự). `Ctrl+C` để dừng.
 
 ## Cách hoạt động
 
