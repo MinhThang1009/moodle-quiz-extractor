@@ -23,7 +23,7 @@ OCR_LANGS = ("vi", "en")
 # Vùng nội dung web (bỏ status bar trên + thanh browser dưới của screen-recording điện
 # thoại). OCR trên vùng này sạch hơn full-frame. Chỉnh nếu chrome máy khác tỉ lệ.
 F_CONTENT_TOP = 0.067  # mép trên vùng content (tỉ lệ H)
-F_CONTENT_BOT = 0.827  # mép dưới vùng content (tỉ lệ H)
+F_CONTENT_BOT = 0.856  # mép dưới vùng content, ngay trên overlay browser (tỉ lệ H)
 F_PAIR_MIN, F_PAIR_MAX = 0.30, 0.74  # chiều cao block hợp lệ khi có header kế (theo H)
 F_HEAD_YTOL = 0.02  # dung sai y khi ghép 'Question'+số (theo H)
 F_HEAD_XDIST = 0.31  # khoảng cách x tối đa khi ghép 'Question'+số (theo W)
