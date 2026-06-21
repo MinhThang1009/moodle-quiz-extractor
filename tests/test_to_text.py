@@ -1,6 +1,22 @@
 """parse_question: tách câu hỏi + 4 đáp án từ các dòng OCR (logic thuần, không OCR)."""
 
-from quiz_extractor.to_text import parse_question
+from quiz_extractor.to_text import _llm_result, parse_question
+
+
+def test_llm_result_maps_options_by_order():
+    obj = {
+        "question": " Câu hỏi mẫu? ",
+        "options": [{"label": "a", "text": " Một "}, {"label": "b", "text": "Hai"}],
+    }
+    assert _llm_result(obj, 7) == {
+        "number": 7,
+        "question": "Câu hỏi mẫu?",
+        "options": {"a": "Một", "b": "Hai"},
+    }
+
+
+def test_llm_result_tolerates_missing_fields():
+    assert _llm_result({}, 1) == {"number": 1, "question": "", "options": {}}
 
 
 def test_parse_question_splits_four_options():

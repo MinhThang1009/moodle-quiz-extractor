@@ -92,8 +92,29 @@ python -m quiz_extractor --force-ocr
 | `--cache` | `output/ocr_cache.pkl` | File cache OCR |
 | `--step` | `4` | OCR mỗi `STEP` frame (nhỏ hơn = kỹ hơn, chậm hơn) |
 | `--force-ocr` | `false` | Xoá cache, OCR lại từ đầu |
+| `--config` | – | JSON override marker/tỉ lệ template (xem [Template khác](#template-khác)) |
 
 Kết quả: `output/questions/question-01.png`, `question-02.png`, …
+
+> OCR in tiến độ **dạng stream** (1 dòng cập nhật tại chỗ) và chỉ giữ ~1 frame trong RAM
+> (stream video, không nạp toàn bộ → không OOM video dài). Có **GPU (CUDA/MPS)** thì easyocr
+> tự dùng. Thiếu câu / câu thiếu nội dung sẽ in **cảnh báo** ở cuối.
+
+### Template khác
+
+Bám text Moodle tiếng Anh + screen-recording điện thoại. Với Moodle **ngôn ngữ/theme
+khác** hoặc quay **desktop** (tỉ lệ chrome khác), truyền `--config quiz.json` để override
+không cần sửa code:
+
+```json
+{
+  "QUESTION_RE": "câu hỏi\\s*(\\d{1,3})",
+  "QUIZ_MARKERS": ["chưa trả lời", "đánh dấu"],
+  "OCR_LANGS": ["vi"],
+  "F_CONTENT_TOP": 0.0,
+  "F_CONTENT_BOT": 1.0
+}
+```
 
 ## Xuất text (OCR ảnh câu)
 

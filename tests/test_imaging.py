@@ -33,17 +33,24 @@ def test_block_sharpness_sharp_gt_blurry():
 def test_sharpest_neighbor_identical_returns_self():
     geo = Geom(200, 480)
     base = np.full((200, 480, 3), 128, np.uint8)
-    frames = [base.copy() for _ in range(5)]
+    frames = {i: base.copy() for i in range(5)}  # dict idx->frame
     assert sharpest_neighbor(frames, 2, 0, 200, geo) == 2
 
 
 def test_sharpest_neighbor_picks_sharper_same_content():
     geo = Geom(200, 480)
     base = np.full((200, 480, 3), 128, np.uint8)
-    frames = [base.copy() for _ in range(5)]
+    frames = {i: base.copy() for i in range(5)}
     sharper = base.copy()
     sharper[:, 14:398:2, :] = (
         131  # sọc mờ: khác rất ít (diff < STILL_DIFF) nhưng nét hơn
     )
     frames[3] = sharper
     assert sharpest_neighbor(frames, 2, 0, 200, geo) == 3
+
+
+def test_sharpest_neighbor_skips_missing_indices():
+    geo = Geom(200, 480)
+    base = np.full((200, 480, 3), 128, np.uint8)
+    frames = {2: base.copy()}  # chỉ có frame chọn, không có lân cận
+    assert sharpest_neighbor(frames, 2, 0, 200, geo) == 2

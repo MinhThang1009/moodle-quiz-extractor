@@ -19,21 +19,49 @@ logger = logging.getLogger(__name__)
 SAVE_EVERY = 40  # lưu cache mỗi N frame đã OCR (cache resume thông minh)
 
 
-def load_frames(video_path: Path) -> list:
-    """Đọc toàn bộ frame của video vào RAM (BGR)."""
+def gpu_available() -> bool:
+    """True nếu có GPU (CUDA/MPS) để easyocr chạy nhanh hơn nhiều."""
+    try:
+        import torch
+    except ImportError:
+        return False
+    if torch.cuda.is_available():
+        return True
+    mps = getattr(torch.backends, "mps", None)
+    return bool(mps and mps.is_available())
+
+
+def video_props(video_path: Path) -> tuple[int, int, int]:
+    """Trả về (số frame, H, W) mà không nạp toàn bộ video vào RAM."""
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         raise SystemExit(f"Không mở được video: {video_path}")
-    frames = []
-    while True:
+    ok, frame = cap.read()
+    if not ok:
+        cap.release()
+        raise SystemExit(f"Video rỗng: {video_path}")
+    h, w = frame.shape[:2]
+    n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 0  # best-effort (vài file báo sai)
+    cap.release()
+    return max(n, 0), h, w
+
+
+def read_content_frames(video_path: Path, indices, c_top: int, c_bot: int) -> dict:
+    """Đọc CHỈ các frame cần (đã crop content) -> {idx: frame}. Bộ nhớ ~ số idx."""
+    want = set(indices)
+    out: dict[int, object] = {}
+    cap = cv2.VideoCapture(str(video_path))
+    idx = 0
+    while want:
         ok, frame = cap.read()
         if not ok:
             break
-        frames.append(frame)
+        if idx in want:
+            out[idx] = frame[c_top:c_bot].copy()
+            want.discard(idx)
+        idx += 1
     cap.release()
-    if not frames:
-        raise SystemExit(f"Video rỗng: {video_path}")
-    return frames
+    return out
 
 
 def parse_headers(detections, geo: Geom) -> list:
@@ -140,12 +168,21 @@ def _progress(done: int, total: int, idx: int, headers: list) -> None:
     sys.stdout.flush()
 
 
-def build_cache(frames: list, geo: Geom, cache_path: Path, step: int) -> list:
-    """OCR mỗi `step` frame, giữ frame quiz. Stream tiến độ + cache resume."""
+def build_cache(
+    video_path: Path, geo: Geom, cache_path: Path, step: int, c_top: int, c_bot: int
+) -> list:
+    """Stream video, OCR mỗi `step` frame, lưu (idx, [(num, y, sharp)]).
+
+    Streaming -> bộ nhớ ~1 frame. Stream tiến độ + cache resume thông minh. Mỗi header
+    kèm độ nét block (tính ngay tại frame) để selection sau khỏi phải đọc lại frame.
+    """
     import easyocr  # import muộn: nặng (torch)
 
+    from .imaging import block_sharpness
+
     cache_path.parent.mkdir(parents=True, exist_ok=True)  # tạo folder ngay
-    total = len(range(0, len(frames), step))
+    n = video_props(video_path)[0]
+    total = (n + step - 1) // step if n > 0 else 0
 
     # Resume nếu có cache DỞ khớp (size, step) -> tiếp tục từ frame còn lại.
     start, data = 0, []
@@ -155,26 +192,40 @@ def build_cache(frames: list, geo: Geom, cache_path: Path, step: int) -> list:
         data = list(cached.get("data", []))
         logger.info("Tiếp tục OCR từ frame %d (đã có %d câu).", start, len(data))
 
-    reader = easyocr.Reader(list(cfg.OCR_LANGS), gpu=False, verbose=False)
-    done = start // step  # số sample đã xong trước đó
-    for k, idx in enumerate(range(start, len(frames), step), 1):
-        detections = reader.readtext(frames[idx], detail=1, paragraph=False)
-        headers = parse_headers(detections, geo)
-        if _is_quiz_frame(detections, headers):
-            data.append((idx, headers))
-        done += 1
-        _progress(done, total, idx, headers)
-        if k % SAVE_EVERY == 0:
-            _save_cache(cache_path, geo, step, data, idx + step, False)
+    reader = easyocr.Reader(list(cfg.OCR_LANGS), gpu=gpu_available(), verbose=False)
+    cap = cv2.VideoCapture(str(video_path))
+    idx, done = 0, 0
+    while True:
+        ok, frame = cap.read()
+        if not ok:
+            break
+        if idx % step == 0 and idx >= start:
+            gray = cv2.cvtColor(frame[c_top:c_bot], cv2.COLOR_BGR2GRAY)
+            detections = reader.readtext(frame[c_top:c_bot], detail=1, paragraph=False)
+            headers = parse_headers(detections, geo)
+            if _is_quiz_frame(detections, headers):
+                triples = []
+                for i, (num, y) in enumerate(headers):
+                    y2 = headers[i + 1][1] if i + 1 < len(headers) else geo.H
+                    triples.append((num, y, block_sharpness(gray, y, y2, geo)))
+                data.append((idx, triples))
+            done += 1
+            _progress(start // step + done, total, idx, headers)
+            if done % SAVE_EVERY == 0:
+                _save_cache(cache_path, geo, step, data, idx + step, False)
+        idx += 1
+    cap.release()
 
-    _save_cache(cache_path, geo, step, data, len(frames), True)
+    _save_cache(cache_path, geo, step, data, idx, True)
     sys.stdout.write("\n")
     sys.stdout.flush()
     logger.info("Đã cache %d frame quiz -> %s", len(data), cache_path)
     return data
 
 
-def load_or_build_cache(frames: list, geo: Geom, cache_path: Path, step: int) -> list:
+def load_or_build_cache(
+    video_path: Path, geo: Geom, cache_path: Path, step: int, c_top: int, c_bot: int
+) -> list:
     """Dùng cache nếu khớp & hoàn tất; cache dở -> OCR tiếp; lệch -> OCR lại."""
     cached = _read_cache(cache_path)
     if cached and _matches(cached, geo, step):
@@ -184,4 +235,4 @@ def load_or_build_cache(frames: list, geo: Geom, cache_path: Path, step: int) ->
         logger.info("Cache còn dở -> tiếp tục OCR.")
     elif cached:
         logger.info("Cache lệch (độ phân giải/STEP) -> OCR lại.")
-    return build_cache(frames, geo, cache_path, step)
+    return build_cache(video_path, geo, cache_path, step, c_top, c_bot)

@@ -12,11 +12,18 @@ phiên bản tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
   2 engine — `easyocr` (offline, mặc định) và `llm` (Anthropic vision, chính xác hơn).
 - Lệnh `quiz_extractor.watch`: watcher (polling) tự chạy pipeline khi có video mới trong
   `data/` -> `output/<tên-video>/`; cờ `--to-text`, `--once`, `--reprocess`.
+- Cờ `--config <json>` (mọi lệnh): override marker template + tỉ lệ layout tại runtime ->
+  chạy được Moodle theme/ngôn ngữ khác (vd "Câu hỏi N") hoặc quay desktop, không sửa code.
+- **GPU auto-detect**: easyocr tự dùng CUDA/MPS nếu có (nhanh hơn nhiều), fallback CPU.
+- Cảnh báo (WARNING) nổi bật khi **thiếu câu** hoặc câu **thiếu nội dung** (ảnh quá ngắn).
+- Integration test thật: chạy `extract_questions` trên video tổng hợp (chỉ mock OCR).
 
 ### Changed
 - OCR build_cache: in tiến độ dạng stream (1 dòng cập nhật tại chỗ) + tạo thư mục output ngay.
 - **Cache resume thông minh**: lưu cache tăng dần (mỗi 40 frame, ghi nguyên tử), Ctrl+C giữa
   chừng -> chạy lại tiếp tục đúng chỗ thay vì OCR lại từ đầu.
+- **Tiết kiệm RAM**: stream video thay vì nạp toàn bộ frame (OCR ~1 frame; extract chỉ đọc
+  frame cần) -> không OOM với video dài. Cache lưu kèm độ nét từng block để selection khỏi đọc lại.
 
 ### Fixed
 - Câu dài/cuối trang không còn bị cắt đáp án: tail chọn frame header cao nhất (đủ chỗ cả block).

@@ -21,17 +21,17 @@ def trim_trailing_white(crop):
     return crop if len(rows) == 0 else crop[: rows[-1] + 1]
 
 
-def sharpest_neighbor(frames: list, idx: int, y1: int, y2: int, geo: Geom) -> int:
-    """Trong ±NEIGHBOR_R frame: chọn frame CÙNG nội dung nhưng NÉT NHẤT ở block."""
-    base = cv2.cvtColor(frames[idx], cv2.COLOR_BGR2GRAY)
+def sharpest_neighbor(
+    frames_by_idx: dict, idx: int, y1: int, y2: int, geo: Geom
+) -> int:
+    """±NEIGHBOR_R frame (dict idx->frame): chọn frame CÙNG nội dung, NÉT NHẤT."""
+    base = cv2.cvtColor(frames_by_idx[idx], cv2.COLOR_BGR2GRAY)
     best_idx = idx
     best_sharp = block_sharpness(base, y1, y2, geo)
-    lo = max(0, idx - cfg.NEIGHBOR_R)
-    hi = min(len(frames), idx + cfg.NEIGHBOR_R + 1)
-    for j in range(lo, hi):
-        if j == idx:
+    for j in range(idx - cfg.NEIGHBOR_R, idx + cfg.NEIGHBOR_R + 1):
+        if j == idx or j not in frames_by_idx:
             continue
-        gray = cv2.cvtColor(frames[j], cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(frames_by_idx[j], cv2.COLOR_BGR2GRAY)
         if float(np.mean(cv2.absdiff(gray[y1:y2], base[y1:y2]))) > cfg.STILL_DIFF:
             continue  # đã cuộn -> không cùng nội dung
         sharp = block_sharpness(gray, y1, y2, geo)

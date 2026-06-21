@@ -131,8 +131,16 @@ def main() -> None:
     parser.add_argument(
         "--once", action="store_true", help="Quét 1 lượt rồi thoát (không lặp)"
     )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="JSON override template (markers/fractions)",
+    )
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stdout)
+    if args.config:
+        cfg.load_overrides(args.config)
     try:
         watch(
             args.input,

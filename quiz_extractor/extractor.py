@@ -1,10 +1,9 @@
 """Orchestration: từ video -> 1 ảnh/câu (không sót, không lặp).
 
-Quy trình:
-  1. Đọc frame, OCR (hoặc dùng cache) tìm header "Question N".
-  2. Gom ứng viên block theo số câu.
-  3. Mỗi câu: chọn frame nét nhất tại vùng block (refine lân cận), cắt block theo
-     ranh giới khoảng trắng (tự bỏ lưới nav / header câu kế).
+Quy trình (tiết kiệm RAM — không nạp toàn bộ video):
+  1. Stream video, OCR (hoặc dùng cache) tìm header "Question N" + độ nét từng block.
+  2. Gom ứng viên theo số câu; mỗi câu chọn nguồn tốt nhất (dùng độ nét đã cache).
+  3. Đọc CHỈ các frame cần (frame chọn ± lân cận), refine + cắt block + lưu.
 """
 
 import logging
@@ -15,49 +14,40 @@ import cv2
 
 from . import config as cfg
 from .geometry import Geom
-from .imaging import block_sharpness, sharpest_neighbor, trim_trailing_white
-from .ocr import load_frames, load_or_build_cache
+from .imaging import sharpest_neighbor, trim_trailing_white
+from .ocr import load_or_build_cache, read_content_frames, video_props
 
 logger = logging.getLogger(__name__)
 
 
 def _collect_candidates(data: list, height: int) -> dict:
-    """data [(idx, headers)] -> {qnum: [(idx, y1, y2, has_next)]}."""
+    """data [(idx, [(num, y, sharp)])] -> {qnum: [(idx, y1, y2, has_next, sharp)]}."""
     candidates = defaultdict(list)
     for idx, headers in data:
-        for i, (number, y1) in enumerate(headers):
+        for i, (number, y1, sharp) in enumerate(headers):
             if i + 1 < len(headers):
                 y2, has_next = headers[i + 1][1], True
             else:
                 y2, has_next = height, False
-            candidates[number].append((idx, y1, y2, has_next))
+            candidates[number].append((idx, y1, y2, has_next, sharp))
     return candidates
 
 
-def _pick_source(number_cands: list, frames: list, geo: Geom):
-    """Chọn (idx, y1, hard_limit) tốt nhất cho 1 câu.
+def _pick_source(number_cands: list, geo: Geom):
+    """Chọn (idx, y1, hard_limit) tốt nhất cho câu — dùng độ nét đã cache.
 
     Ưu tiên block có header kế (biên rõ) + nét nhất; nếu không có thì lấy frame header
-    cao nhất đủ chỗ (câu cuối trang).
+    cao nhất (chỗ trống nhiều nhất) để lọt cả block (câu dài / cuối trang).
     """
     clean = [
-        (idx, y1, y2)
-        for (idx, y1, y2, has_next) in number_cands
+        (idx, y1, y2, sharp)
+        for (idx, y1, y2, has_next, sharp) in number_cands
         if has_next and geo.pair_min <= y2 - y1 <= geo.pair_max
     ]
     if clean:
-        idx, y1, y2 = max(
-            clean,
-            key=lambda c: block_sharpness(
-                cv2.cvtColor(frames[c[0]], cv2.COLOR_BGR2GRAY), c[1], c[2], geo
-            ),
-        )
+        idx, y1, y2, _ = max(clean, key=lambda c: c[3])
         return idx, y1, y2
-
-    # Câu dài / câu cuối: không có header kế -> chọn frame header CAO NHẤT (y1 nhỏ
-    # nhất = chỗ trống dưới nhiều nhất) để lọt CẢ block; độ nét tinh chỉnh sau bằng
-    # sharpest_neighbor. (Ưu tiên không-cắt hơn là nét.)
-    y1, idx = min((y1, idx) for (idx, y1, _, _) in number_cands)
+    y1, idx = min((y1, idx) for (idx, y1, _, _, _) in number_cands)
     return idx, y1, geo.H
 
 
@@ -67,55 +57,66 @@ def extract_questions(
     cache_path: Path,
     step: int,
 ) -> dict:
-    """Trích xuất, lưu question-NN.png. Trả về {"saved": [...], "missing": [...]}."""
-    frames = load_frames(video_path)
-    full_h, full_w = frames[0].shape[:2]
-    # Crop về vùng content (bỏ status bar + thanh browser) theo tỉ lệ -> OCR sạch hơn.
+    """Trích xuất, lưu question-NN.png. Trả về {"saved", "missing", "incomplete"}."""
+    n_frames, full_h, full_w = video_props(video_path)
     c_top = int(cfg.F_CONTENT_TOP * full_h)
     c_bot = int(cfg.F_CONTENT_BOT * full_h)
-    frames = [f[c_top:c_bot] for f in frames]
-    height, width = frames[0].shape[:2]
-    geo = Geom(height, width)
+    height = c_bot - c_top
+    geo = Geom(height, full_w)
     logger.info(
         "Video %dx%d (content %dx%d), %d frame.",
         full_w,
         full_h,
-        width,
+        full_w,
         height,
-        len(frames),
+        n_frames,
     )
 
-    data = load_or_build_cache(frames, geo, cache_path, step)
+    data = load_or_build_cache(video_path, geo, cache_path, step, c_top, c_bot)
     candidates = _collect_candidates(data, height)
+    picks = {n: _pick_source(candidates[n], geo) for n in sorted(candidates)}
+
+    # Đọc CHỈ các frame cần: mỗi câu = frame chọn ± NEIGHBOR_R (để refine độ nét).
+    needed: set[int] = set()
+    for idx, _, _ in picks.values():
+        needed.update(range(max(0, idx - cfg.NEIGHBOR_R), idx + cfg.NEIGHBOR_R + 1))
+    frames = read_content_frames(video_path, needed, c_top, c_bot)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     for stale in output_dir.glob("*.png"):
         stale.unlink()
 
-    saved = []
-    for number in sorted(candidates):
-        idx, y1, hard = _pick_source(candidates[number], frames, geo)
-        best_idx = sharpest_neighbor(frames, idx, y1, min(hard, height), geo)
+    saved, incomplete = [], []
+    incomplete_h = int(cfg.F_INCOMPLETE * height)
+    for number, (idx, y1, hard) in picks.items():
+        best = sharpest_neighbor(frames, idx, y1, min(hard, height), geo)
         top = max(0, y1 - geo.top_margin)
         if hard < height:  # có header câu kế -> cắt tới ngay trước header đó
-            crop = frames[best_idx][top : hard - geo.top_margin]
+            crop = frames[best][top : hard - geo.top_margin]
         else:  # câu cuối trang -> cắt tới đáy content rồi bỏ khoảng trắng thừa
-            crop = trim_trailing_white(frames[best_idx][top:height])
+            crop = trim_trailing_white(frames[best][top:height])
         cv2.imwrite(str(output_dir / f"question-{number:02d}.png"), crop)
         saved.append(number)
+        if crop.shape[0] < incomplete_h:  # ảnh quá ngắn -> nghi thiếu nội dung
+            incomplete.append(number)
 
     missing = []
     if saved:
         missing = [n for n in range(min(saved), max(saved) + 1) if n not in saved]
-    return {"saved": saved, "missing": missing}
+    return {"saved": saved, "missing": missing, "incomplete": incomplete}
 
 
 def log_report(result: dict, output_dir: Path) -> None:
-    """Ghi log tóm tắt kết quả trích xuất."""
+    """Ghi log tóm tắt; cảnh báo (WARNING) nếu thiếu câu hoặc câu thiếu nội dung."""
     saved, missing = result["saved"], result["missing"]
+    incomplete = result.get("incomplete", [])
     logger.info("Đã lưu %d câu -> %s/", len(saved), output_dir)
     logger.info("Các câu: %s", saved)
     if saved:
         span = f"{min(saved)}-{max(saved)}"
-        status = missing if missing else "không (đủ liên tục)"
-        logger.info("Range %s, THIẾU: %s", span, status)
+        if missing:
+            logger.warning("⚠ THIẾU câu trong khoảng %s: %s", span, missing)
+        else:
+            logger.info("Range %s: đủ liên tục, không sót.", span)
+    if incomplete:
+        logger.warning("⚠ Câu có thể THIẾU NỘI DUNG (ảnh quá ngắn): %s", incomplete)

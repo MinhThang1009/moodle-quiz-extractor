@@ -46,6 +46,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-q", "--quiet", action="store_true", help="Chỉ in cảnh báo/lỗi"
     )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="JSON override template (markers/fractions)",
+    )
     return parser
 
 
@@ -58,6 +64,8 @@ def main() -> None:
     _force_utf8()
     args = build_parser().parse_args()
     _setup_logging(args.verbose, args.quiet)
+    if args.config:
+        cfg.load_overrides(args.config)
     if args.force_ocr and args.cache.exists():
         args.cache.unlink()
     result = extract_questions(args.video, args.output, args.cache, args.step)

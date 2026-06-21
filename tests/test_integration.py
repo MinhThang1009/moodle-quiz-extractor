@@ -1,36 +1,64 @@
-"""Integration: chạy toàn bộ extract_questions (collect -> pick -> crop -> save).
+"""Integration: chạy THẬT extract_questions trên video tổng hợp, chỉ mock OCR.
 
-Mock 2 ranh giới I/O (đọc frame + cache OCR) bằng dữ liệu tổng hợp -> không cần video
-thật hay easyocr/torch, chạy nhanh trên CI.
+Tạo video .avi nhỏ bằng cv2, thay easyocr bằng Reader giả trả detection cố định
+(Question 1 + Question 2). Mọi bước còn lại (stream video, build_cache, gom ứng viên,
+pick, đọc frame theo nhu cầu, refine, cắt, lưu) chạy thật -> bắt được bug pipeline.
 """
 
+import sys
+import types
 from pathlib import Path
 
+import cv2
 import numpy as np
+import pytest
 
-from quiz_extractor import extractor
+from quiz_extractor.extractor import extract_questions
 
 
-def _make_frames():
-    """3 frame trắng (1000x480), có 2 dải nội dung tối cho 2 câu."""
-    frame = np.full((1000, 480, 3), 255, np.uint8)
-    frame[107:330, :] = 60  # block câu 1 (full-y)
-    frame[447:670, :] = 60  # block câu 2
-    return [frame.copy() for _ in range(3)]
+def _make_video(path: Path, frames: int = 12) -> None:
+    vw = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"MJPG"), 30, (480, 1000))
+    if not vw.isOpened():
+        pytest.skip("Không có codec MJPG để tạo video test")
+    for _ in range(frames):
+        frame = np.full((1000, 480, 3), 255, np.uint8)
+        frame[100:400] = 60  # ít nội dung cho có gì để crop
+        vw.write(frame)
+    vw.release()
+
+
+def _box(x, y):
+    return [[x, y], [x, y], [x, y], [x, y]]
+
+
+class _FakeReader:
+    def __init__(self, *a, **k):
+        pass
+
+    def readtext(self, img, detail=1, paragraph=False):
+        # Cố định: Question 1 @y40 (+ marker) và Question 2 @y300 cho mọi frame.
+        return [
+            (_box(25, 40), "Question", 0.9),
+            (_box(83, 40), "1", 0.9),
+            (_box(25, 70), "Marked out of 1.00", 0.9),
+            (_box(25, 300), "Question", 0.9),
+            (_box(83, 300), "2", 0.9),
+        ]
+
+
+def _patch_easyocr(monkeypatch):
+    fake = types.ModuleType("easyocr")
+    fake.Reader = _FakeReader
+    monkeypatch.setitem(sys.modules, "easyocr", fake)
 
 
 def test_extract_questions_end_to_end(tmp_path, monkeypatch):
-    frames = _make_frames()
-    # headers theo toạ độ CONTENT-CROP (sau khi crop [c_top:c_bot], c_top≈67):
-    # câu 1 @ content-y 40, câu 2 @ content-y 380
-    data = [(0, [(1, 40), (2, 380)])]
-    monkeypatch.setattr(extractor, "load_frames", lambda _p: frames)
-    monkeypatch.setattr(extractor, "load_or_build_cache", lambda *a, **k: data)
+    _patch_easyocr(monkeypatch)
+    video = tmp_path / "v.avi"
+    _make_video(video)
+    out = tmp_path / "q"
 
-    out = tmp_path / "questions"
-    result = extractor.extract_questions(
-        Path("dummy.mp4"), out, tmp_path / "cache.pkl", step=4
-    )
+    result = extract_questions(video, out, tmp_path / "c.pkl", step=4)
 
     assert result["saved"] == [1, 2]
     assert result["missing"] == []
@@ -38,16 +66,17 @@ def test_extract_questions_end_to_end(tmp_path, monkeypatch):
     assert (out / "question-02.png").exists()
 
 
-def test_missing_reported_when_gap(tmp_path, monkeypatch):
-    frames = _make_frames()
-    # chỉ thấy câu 1 và câu 3 -> báo thiếu câu 2
-    data = [(0, [(1, 40), (3, 380)])]
-    monkeypatch.setattr(extractor, "load_frames", lambda _p: frames)
-    monkeypatch.setattr(extractor, "load_or_build_cache", lambda *a, **k: data)
+def test_cache_complete_reused_without_ocr(tmp_path, monkeypatch):
+    _patch_easyocr(monkeypatch)
+    video = tmp_path / "v.avi"
+    _make_video(video)
+    out = tmp_path / "q"
+    cache = tmp_path / "c.pkl"
 
-    result = extractor.extract_questions(
-        Path("dummy.mp4"), tmp_path / "q", tmp_path / "c.pkl", step=4
-    )
+    extract_questions(video, out, cache, step=4)  # build cache
+    assert cache.exists()
 
-    assert result["saved"] == [1, 3]
-    assert result["missing"] == [2]
+    # Cache hoàn tất -> lần 2 không cần easyocr (gỡ fake để chứng minh không OCR lại).
+    monkeypatch.delitem(sys.modules, "easyocr", raising=False)
+    result = extract_questions(video, out, cache, step=4)
+    assert result["saved"] == [1, 2]

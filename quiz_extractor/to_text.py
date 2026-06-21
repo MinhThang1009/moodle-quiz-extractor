@@ -97,7 +97,9 @@ def _questions_easyocr(images: list) -> list:
     """OCR offline bằng easyocr (~95%, sai dấu lác đác)."""
     import easyocr  # import muộn: nặng
 
-    reader = easyocr.Reader(list(cfg.OCR_LANGS), gpu=False, verbose=False)
+    from .ocr import gpu_available
+
+    reader = easyocr.Reader(list(cfg.OCR_LANGS), gpu=gpu_available(), verbose=False)
     results = []
     for path in images:
         up = cv2.resize(
@@ -148,21 +150,23 @@ def _questions_llm(images: list, model: str) -> list:
             output_config={"format": {"type": "json_schema", "schema": LLM_SCHEMA}},
         )
         text = next(b.text for b in response.content if b.type == "text")
-        obj = json.loads(text)
-        options = {
-            chr(ord("a") + i): o["text"].strip()
-            for i, o in enumerate(obj.get("options", [])[:8])
-        }
-        number = _number_of(path)
-        results.append(
-            {
-                "number": number,
-                "question": obj.get("question", "").strip(),
-                "options": options,
-            }
-        )
-        logger.info("Câu %d: %d đáp án", number, len(options))
+        result = _llm_result(json.loads(text), _number_of(path))
+        results.append(result)
+        logger.info("Câu %d: %d đáp án", result["number"], len(result["options"]))
     return results
+
+
+def _llm_result(obj: dict, number: int) -> dict:
+    """Map JSON LLM -> {number, question, options{a,b,..}} (gán nhãn theo thứ tự)."""
+    options = {
+        chr(ord("a") + i): str(o.get("text", "")).strip()
+        for i, o in enumerate(obj.get("options", [])[:8])
+    }
+    return {
+        "number": number,
+        "question": str(obj.get("question", "")).strip(),
+        "options": options,
+    }
 
 
 def extract_text(images_dir: Path, out_dir: Path, engine: str, model: str) -> list:
@@ -238,8 +242,16 @@ def main() -> None:
     parser.add_argument(
         "--model", default=DEFAULT_LLM_MODEL, help="Model khi --engine llm"
     )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="JSON override template (markers/fractions)",
+    )
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stdout)
+    if args.config:
+        cfg.load_overrides(args.config)
     results = extract_text(args.input, args.output, args.engine, args.model)
     logger.info("Đã xuất %d câu -> %s/questions.{json,md}", len(results), args.output)
 
