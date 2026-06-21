@@ -26,6 +26,9 @@ phiên bản tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
   chừng -> chạy lại tiếp tục đúng chỗ thay vì OCR lại từ đầu.
 - **Tiết kiệm RAM**: stream video thay vì nạp toàn bộ frame (OCR ~1 frame; extract chỉ đọc
   frame cần) -> không OOM với video dài. Cache lưu kèm độ nét từng block để selection khỏi đọc lại.
+- **Bỏ qua frame tĩnh**: frame trùng nội dung frame OCR gần nhất (diff < `STILL_DIFF`) thì không
+  OCR lại -> nhanh hơn nhiều ở đoạn màn hình đứng yên. So với anchor (không phải frame liền
+  trước) nên cuộn chậm tích lũy vẫn được OCR -> không sót câu.
 
 ### Fixed
 - Câu dài/cuối trang không còn bị cắt đáp án: tail chọn frame header cao nhất (đủ chỗ cả block).

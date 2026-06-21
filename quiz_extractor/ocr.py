@@ -169,14 +169,15 @@ def _save_cache(cache_path, geo, step, data, next_idx, complete) -> None:
     tmp.replace(cache_path)
 
 
-def _progress(done: int, total: int, idx: int, headers: list) -> None:
+def _progress(scanned: int, total: int, idx: int, headers: list, skipped: int) -> None:
     """In tiến độ OCR dạng stream (1 dòng cập nhật tại chỗ); im khi chạy song song."""
     if os.environ.get("QUIZ_QUIET_PROGRESS"):
         return
     nums = ",".join(str(n) for n, _ in headers) if headers else "-"
-    pct = 100.0 * done / total if total else 100.0
+    pct = 100.0 * scanned / total if total else 100.0
     sys.stdout.write(
-        f"\rOCR {done:4d}/{total} ({pct:5.1f}%) frame {idx:5d}  câu[{nums}]      "
+        f"\rOCR {scanned:4d}/{total} ({pct:5.1f}%) "
+        f"f{idx:5d} skip{skipped:4d} câu[{nums}]   "
     )
     sys.stdout.flush()
 
@@ -207,32 +208,53 @@ def build_cache(
 
     reader = easyocr.Reader(list(cfg.OCR_LANGS), gpu=gpu_available(), verbose=False)
     cap = cv2.VideoCapture(str(video_path))
-    idx, done = 0, 0
+    idx, ocred, skipped, scanned = 0, 0, 0, 0
+    last_gray = None  # frame OCR gần nhất (anchor) để bỏ qua frame tĩnh trùng nội dung
     while True:
         ok, frame = cap.read()
         if not ok:
             break
         if idx % step == 0 and idx >= start:
             gray = cv2.cvtColor(frame[c_top:c_bot], cv2.COLOR_BGR2GRAY)
-            detections = reader.readtext(frame[c_top:c_bot], detail=1, paragraph=False)
-            headers = parse_headers(detections, geo)
-            if _is_quiz_frame(detections, headers):
-                triples = []
-                for i, (num, y) in enumerate(headers):
-                    y2 = headers[i + 1][1] if i + 1 < len(headers) else geo.H
-                    triples.append((num, y, block_sharpness(gray, y, y2, geo)))
-                data.append((idx, triples))
-            done += 1
-            _progress(start // step + done, total, idx, headers)
-            if done % SAVE_EVERY == 0:
-                _save_cache(cache_path, geo, step, data, idx + step, False)
+            scanned += 1
+            # So với anchor (không phải frame liền trước) -> cuộn chậm tích lũy vẫn được
+            # OCR khi đủ khác; tĩnh hoàn toàn thì bỏ qua tới khi cuộn. Không sót câu.
+            still = (
+                last_gray is not None
+                and float(cv2.absdiff(gray, last_gray).mean()) < cfg.STILL_DIFF
+            )
+            if still:
+                skipped += 1
+                _progress(start // step + scanned, total, idx, [], skipped)
+            else:
+                last_gray = gray
+                detections = reader.readtext(
+                    frame[c_top:c_bot], detail=1, paragraph=False
+                )
+                headers = parse_headers(detections, geo)
+                if _is_quiz_frame(detections, headers):
+                    triples = []
+                    for i, (num, y) in enumerate(headers):
+                        y2 = headers[i + 1][1] if i + 1 < len(headers) else geo.H
+                        triples.append((num, y, block_sharpness(gray, y, y2, geo)))
+                    data.append((idx, triples))
+                ocred += 1
+                _progress(start // step + scanned, total, idx, headers, skipped)
+                if ocred % SAVE_EVERY == 0:
+                    _save_cache(cache_path, geo, step, data, idx + step, False)
         idx += 1
     cap.release()
 
     _save_cache(cache_path, geo, step, data, idx, True)
     sys.stdout.write("\n")
     sys.stdout.flush()
-    logger.info("Đã cache %d frame quiz -> %s", len(data), cache_path)
+    logger.info(
+        "Đã cache %d frame quiz (%d OCR, %d bỏ qua frame tĩnh) -> %s",
+        len(data),
+        ocred,
+        skipped,
+        cache_path,
+    )
     return data
 
 
