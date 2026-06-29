@@ -4,4 +4,4 @@ Bám cấu trúc TEXT của template Moodle ("Question N", "Marked out of"...) n
 được mọi video cùng template ở mọi độ phân giải, không hard-code pixel.
 """
 
-__version__ = "1.0.0"  # x-release-please-version
+__version__ = "1.1.0"  # x-release-please-version
