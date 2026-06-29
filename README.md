@@ -49,6 +49,9 @@ này: mỗi câu hỏi → đúng **một ảnh** sạch, đầy đủ.
 - ✅ **Cắt khít** — mỗi ảnh đúng 1 block (header + đề + đáp án), tự bỏ lưới nav và header câu kế.
 - ✅ **Portable** — bám cấu trúc *text* Moodle + ngưỡng theo tỉ lệ `H/W` → chạy mọi video cùng template, mọi độ phân giải, không sửa code.
 - ✅ **Cache OCR** — lần đầu OCR vài phút, lần sau gần như tức thì.
+- ✅ **Tự nhận diện layout** — auto-detect vùng nội dung từ video, chạy thẳng cả điện thoại dọc lẫn desktop ngang 2 cột mà không cần chỉnh config.
+- ✅ **Xuất text** — OCR ảnh câu sang `questions.json` + `.md` (engine offline EasyOCR hoặc vision LLM).
+- ✅ **Watcher tự động** — thả video vào `data/` là tự xử lý, hỗ trợ nhiều video song song.
 
 ## Yêu cầu
 
@@ -154,7 +157,8 @@ Bám **cấu trúc text** của template Moodle thay vì vị trí pixel:
 
 ```mermaid
 flowchart LR
-    A[Video .mp4] --> B[Dense-sample<br/>mỗi STEP frame]
+    A[Video .mp4] --> A2[Auto-detect<br/>vùng nội dung]
+    A2 --> B[Dense-sample<br/>bỏ frame tĩnh]
     B --> C[OCR header<br/>Question N]
     C --> D{Có marker<br/>quiz?}
     D -- không --> X[Bỏ frame<br/>overlay]
@@ -164,10 +168,11 @@ flowchart LR
     G --> H[question-NN.png]
 ```
 
-1. Dense-sample frame toàn video, OCR (EasyOCR, vi+en) tìm header `Question N`.
-2. Bỏ frame overlay / không phải trang quiz (vắng marker `Marked out of`, `Flag question`).
-3. Gom ứng viên theo **số câu**; mỗi câu chọn frame **nét nhất** tại vùng câu (refine ±N frame lân cận).
-4. Cắt block từ header câu này tới ranh giới **khoảng trắng** trước câu kế / lưới nav.
+1. **Tự nhận diện vùng nội dung**: phân tích các cặp frame "cuộn thuần" để loại chrome trình duyệt / status bar / overlay — không cần cấu hình theo thiết bị.
+2. Dense-sample frame toàn video, OCR (EasyOCR, vi+en) tìm header `Question N`; **bỏ qua frame tĩnh** trùng nội dung để OCR nhanh hơn.
+3. Bỏ frame overlay / không phải trang quiz (vắng marker); header thật phải có marker grey-box ngay dưới (**anchor cấu trúc**, tránh nhận nhầm "Flag question").
+4. Gom ứng viên theo **số câu**; mỗi câu chọn frame **nét nhất** tại vùng câu (refine ±N frame lân cận).
+5. Cắt block từ header câu này tới ranh giới **khoảng trắng** trước câu kế / lưới nav.
 
 > Chỗ duy nhất phụ thuộc template là regex marker trong
 > [`quiz_extractor/config.py`](quiz_extractor/config.py); đổi LMS khác chỉ cần sửa ở đó.
@@ -177,17 +182,24 @@ flowchart LR
 ```text
 .
 ├── quiz_extractor/        # package chính
-│   ├── config.py          # đường dẫn, marker template Moodle, tỉ lệ layout, hằng số ảnh
+│   ├── config.py          # marker template Moodle, tỉ lệ layout, hằng số ảnh
 │   ├── geometry.py        # suy ngưỡng pixel từ (H, W) video
-│   ├── ocr.py             # đọc video, OCR header, cache
-│   ├── imaging.py         # đo độ nét theo block, ranh giới block, refine frame nét nhất
+│   ├── ocr.py             # đọc video, auto-detect vùng nội dung, OCR header, cache
+│   ├── imaging.py         # đo độ nét theo block, refine frame nét nhất
 │   ├── extractor.py       # orchestration: video -> 1 ảnh/câu
+│   ├── to_text.py         # OCR ảnh câu -> text (easyocr / vision LLM)
+│   ├── watch.py           # watcher tự chạy pipeline khi có video mới
 │   └── __main__.py        # CLI
+├── tests/                 # pytest (geometry, ocr, imaging, extractor, detect, ...)
 ├── data/                  # video đầu vào (gitignored)
 ├── output/                # ảnh câu + cache (gitignored)
+├── .github/               # CI/release workflows, dependabot, issue/PR templates
 ├── README.md
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
+├── CODE_OF_CONDUCT.md
+├── SECURITY.md
+├── SUPPORT.md
 ├── LICENSE
 ├── pyproject.toml
 └── requirements.txt
@@ -202,10 +214,12 @@ kém nét hơn (thuật toán đã chọn frame nét nhất có thể).
 
 ## Roadmap
 
-- [ ] Tự upscale + khử nhiễu ảnh để OCR lại nội dung câu (xuất kèm text).
+- [x] Xuất text từ ảnh câu (`questions.json` + `.md`, EasyOCR / vision LLM).
+- [x] Tự nhận diện vùng nội dung — chạy mọi layout không cần config.
+- [x] GPU auto-detect cho EasyOCR.
+- [ ] Tự upscale + khử nhiễu ảnh để OCR câu mờ chính xác hơn.
 - [ ] Hỗ trợ thêm template LMS khác (Google Forms, Azota…) qua file cấu hình marker.
 - [ ] Xuất PDF gộp tất cả câu.
-- [ ] Tùy chọn GPU cho EasyOCR.
 
 ## Đóng góp
 
