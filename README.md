@@ -85,6 +85,8 @@ python -m quiz_extractor --force-ocr
 | `--force-ocr` | `false` | Xoá cache, OCR lại từ đầu |
 | `--config` | – | JSON override marker/tỉ lệ template (xem [Template khác](#template-khác)) |
 | `--no-auto-crop` | `false` | Tắt tự suy vùng nội dung, dùng tỉ lệ cố định trong config |
+| `-v/--verbose` | `false` | In thêm log DEBUG |
+| `-q/--quiet` | `false` | Chỉ in cảnh báo/lỗi |
 
 Kết quả: `output/questions/question-01.png`, `question-02.png`, …
 
@@ -112,7 +114,7 @@ hỏi N"), vì không suy ra từ pixel được:
 
 ## Xuất text (OCR ảnh câu)
 
-Chuyển 42 ảnh câu thành text có cấu trúc (`output/questions.json` + `questions.md`):
+Chuyển ảnh câu thành text có cấu trúc (`output/questions.json` + `questions.md`):
 
 ```bash
 # Mặc định: easyocr (offline, ~95%, sai dấu lác đác) — không thêm dep

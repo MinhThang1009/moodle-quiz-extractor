@@ -19,6 +19,8 @@
 ## Checklist
 
 - [ ] `black .` và `ruff check .` đã sạch
+- [ ] `mypy quiz_extractor` sạch
+- [ ] `pytest` pass
 - [ ] `python -m quiz_extractor --help` chạy được
-- [ ] Đã cập nhật `CHANGELOG.md` (mục `[Unreleased]`) nếu cần
+- [ ] Commit theo Conventional Commits (release-please tự cập nhật `CHANGELOG.md`)
 - [ ] Không hard-code giá trị theo 1 video cụ thể

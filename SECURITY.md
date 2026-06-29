@@ -4,7 +4,8 @@
 
 | Phiên bản | Hỗ trợ |
 |-----------|--------|
-| 1.0.x     | ✅     |
+| Bản phát hành mới nhất | ✅ |
+| Cũ hơn | ❌ |
 
 ## Báo cáo lỗ hổng
 

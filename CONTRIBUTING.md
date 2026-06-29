@@ -9,7 +9,7 @@ tuân thủ [Quy tắc ứng xử](CODE_OF_CONDUCT.md).
 python -m venv .venv
 .venv\Scripts\activate          # Windows  •  Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
-pip install black ruff          # công cụ dev
+pip install -e ".[dev]"         # công cụ dev: black, ruff, mypy, pytest
 ```
 
 ## Quy chuẩn code
@@ -22,6 +22,8 @@ pip install black ruff          # công cụ dev
   ```bash
   black .
   ruff check .
+  mypy quiz_extractor
+  pytest
   python -m quiz_extractor --help    # smoke test
   ```
 
@@ -40,7 +42,7 @@ Type: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`.
 
 1. Fork → tạo branch `feat/...` hoặc `fix/...`.
 2. Đảm bảo `black .` và `ruff check .` sạch (CI sẽ kiểm tra).
-3. Cập nhật [CHANGELOG.md](CHANGELOG.md) mục `[Unreleased]` nếu thay đổi đáng chú ý.
+3. Viết commit theo Conventional Commits — release-please tự sinh `CHANGELOG.md`, không cần sửa tay.
 4. Mô tả PR rõ: làm gì, vì sao, cách test.
 
 ## Báo lỗi / đề xuất
