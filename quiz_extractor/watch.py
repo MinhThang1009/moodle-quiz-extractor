@@ -65,6 +65,7 @@ def process_video(
 ) -> None:
     """Chạy pipeline cho 1 video: trích ảnh câu, rồi OCR text nếu bật."""
     out_dir, questions_dir, cache = _outputs(out_root, video)
+    os.environ["QUIZ_LABEL"] = video.name  # nhãn cho dòng tiến độ OCR (phân biệt video)
     logger.info("=== Xử lý %s -> %s/ ===", video.name, out_dir)
     result = extract_questions(video, questions_dir, cache, step)
     log_report(result, questions_dir)

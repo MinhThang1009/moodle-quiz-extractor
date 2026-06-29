@@ -59,7 +59,7 @@ def test_extract_questions_end_to_end(tmp_path, monkeypatch):
     _make_video(video)
     out = tmp_path / "q"
 
-    result = extract_questions(video, out, tmp_path / "c.pkl", step=4)
+    result = extract_questions(video, out, tmp_path / "c.pkl", step=4, auto_crop=False)
 
     assert result["saved"] == [1, 2]
     assert result["missing"] == []
@@ -74,10 +74,10 @@ def test_cache_complete_reused_without_ocr(tmp_path, monkeypatch):
     out = tmp_path / "q"
     cache = tmp_path / "c.pkl"
 
-    extract_questions(video, out, cache, step=4)  # build cache
+    extract_questions(video, out, cache, step=4, auto_crop=False)  # build cache
     assert cache.exists()
 
     # Cache hoàn tất -> lần 2 không cần easyocr (gỡ fake để chứng minh không OCR lại).
     monkeypatch.delitem(sys.modules, "easyocr", raising=False)
-    result = extract_questions(video, out, cache, step=4)
+    result = extract_questions(video, out, cache, step=4, auto_crop=False)
     assert result["saved"] == [1, 2]

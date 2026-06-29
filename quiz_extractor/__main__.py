@@ -52,6 +52,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="JSON override template (markers/fractions)",
     )
+    parser.add_argument(
+        "--no-auto-crop",
+        action="store_true",
+        help="Tắt tự suy vùng nội dung, dùng tỉ lệ cố định trong config",
+    )
     return parser
 
 
@@ -68,7 +73,13 @@ def main() -> None:
         cfg.load_overrides(args.config)
     if args.force_ocr and args.cache.exists():
         args.cache.unlink()
-    result = extract_questions(args.video, args.output, args.cache, args.step)
+    result = extract_questions(
+        args.video,
+        args.output,
+        args.cache,
+        args.step,
+        auto_crop=not args.no_auto_crop,
+    )
     log_report(result, args.output)
 
 

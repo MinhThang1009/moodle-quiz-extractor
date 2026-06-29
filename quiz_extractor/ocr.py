@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 import cv2
+import numpy as np
 
 from . import config as cfg
 from .geometry import Geom
@@ -65,6 +66,58 @@ def read_content_frames(video_path: Path, indices, c_top: int, c_bot: int) -> di
     return out
 
 
+def detect_content_band(
+    video_path: Path, step: int = 5, t: float = 7.0
+) -> tuple[float, float] | None:
+    """Tự suy vùng nội dung web (bỏ chrome trình duyệt / status bar / overlay đáy).
+
+    Ý tưởng: chỉ xét các cặp frame "cuộn thuần" (dải trên cùng đứng yên -> chrome/status
+    bar không đổi, chỉ nội dung dịch), bỏ cặp chuyển tab/trang. Hàng động ở nhiều cặp =
+    nội dung; chrome và overlay (kể cả overlay ẩn/hiện theo cuộn) thì ít/không động.
+    Ngưỡng thích ứng theo mức động đỉnh nên không phụ thuộc độ phân giải/bố cục.
+
+    Trả (f_top, f_bot) theo tỉ lệ H. Bất thường -> None để nơi gọi fallback về config.
+    Đọc tuần tự, chỉ giữ 2 frame (seek không đáng tin với vài codec).
+    """
+    cap = cv2.VideoCapture(str(video_path))
+    votes = None
+    topband = 0
+    prev = None
+    idx = 0
+    height = 0
+    while True:
+        ok, frame = cap.read()
+        if not ok:
+            break
+        if idx % step == 0:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY).astype(np.int16)
+            if votes is None:
+                height = gray.shape[0]
+                votes = np.zeros(height)
+                topband = max(1, int(0.05 * height))
+            if prev is not None:
+                row_diff = np.abs(gray - prev).mean(axis=1)
+                if row_diff[:topband].mean() < 3.0:  # chrome trên yên -> cặp cuộn thuần
+                    votes += row_diff > t
+            prev = gray
+        idx += 1
+    cap.release()
+
+    if votes is None or not votes.any():
+        return None
+    peak = float(np.percentile(votes, 90))  # mức động của nội dung thật
+    if peak <= 0:
+        return None
+    dynamic = np.where(votes > 0.6 * peak)[0]
+    if len(dynamic) == 0:
+        return None
+    f_top, f_bot = dynamic[0] / height, (dynamic[-1] + 1) / height
+    # Clamp an toàn: kết quả vô lý (cắt quá nửa / dải quá hẹp) -> để nơi gọi fallback.
+    if f_top > 0.4 or f_bot < 0.6 or f_bot - f_top < 0.3:
+        return None
+    return f_top, f_bot
+
+
 def parse_headers(detections, geo: Geom) -> list:
     """OCR detail=1 -> list (qnum, header_y) sort theo y.
 
@@ -76,7 +129,7 @@ def parse_headers(detections, geo: Geom) -> list:
         y, x = bbox[0][1], bbox[0][0]
         token = txt.strip().lower()
         matched = cfg.QUESTION_RE.fullmatch(token)
-        if matched:
+        if matched and int(matched.group(1)) >= 1:  # Moodle đánh số từ 1
             items.append((int(matched.group(1)), y))
         elif token == "question" and x <= geo.head_xleft:
             qword.append(
@@ -93,8 +146,9 @@ def parse_headers(detections, geo: Geom) -> list:
             for ny, nx, value in nums
             if abs(ny - qy) <= geo.head_ytol and 0 < nx - qx < geo.head_xdist
         ]
-        if near:
-            items.append((min(near)[1], qy))
+        value = min(near)[1] if near else 0
+        if value >= 1:  # ghép được số hợp lệ (Moodle từ 1); 0 = đọc sai -> để suy số
+            items.append((value, qy))
         else:
             orphans.append(qy)
     # Suy số orphan từ header numbered gần nhất cách ~1 block (trên: n-1, dưới: n+1).
@@ -170,13 +224,21 @@ def _save_cache(cache_path, geo, step, data, next_idx, complete) -> None:
 
 
 def _progress(scanned: int, total: int, idx: int, headers: list, skipped: int) -> None:
-    """In tiến độ OCR dạng stream (1 dòng cập nhật tại chỗ); im khi chạy song song."""
+    """Tiến độ OCR: stream \\r khi 1 video; mốc ~10%/dòng (kèm nhãn) khi song song."""
+    label = os.environ.get("QUIZ_LABEL", "")
+    tag = f"[{label}] " if label else ""
     if os.environ.get("QUIZ_QUIET_PROGRESS"):
+        # Song song: \r đè nhau -> in mốc ~10% mỗi dòng, kèm nhãn để phân biệt video.
+        if total and scanned % max(1, total // 10) == 0:
+            sys.stdout.write(
+                f"{tag}OCR {100.0 * scanned / total:3.0f}% (frame {idx})\n"
+            )
+            sys.stdout.flush()
         return
     nums = ",".join(str(n) for n, _ in headers) if headers else "-"
     pct = 100.0 * scanned / total if total else 100.0
     sys.stdout.write(
-        f"\rOCR {scanned:4d}/{total} ({pct:5.1f}%) "
+        f"\r{tag}OCR {scanned:4d}/{total} ({pct:5.1f}%) "
         f"f{idx:5d} skip{skipped:4d} câu[{nums}]   "
     )
     sys.stdout.flush()

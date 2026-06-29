@@ -8,6 +8,10 @@ phiên bản tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 ## [Unreleased]
 
 ### Added
+- **Auto-detect vùng nội dung** (mặc định bật): tự suy `F_CONTENT_TOP/BOT` từ video bằng cách
+  phân tích cặp frame "cuộn thuần" (chrome/status bar/overlay đứng yên, nội dung dịch) -> chạy
+  thẳng cả layout khác hẳn (điện thoại dọc ↔ desktop ngang) mà không cần `--config`. Detect
+  bất thường -> fallback tỉ lệ cố định. Tắt bằng `--no-auto-crop`.
 - Lệnh `quiz_extractor.to_text`: OCR ảnh câu sang text có cấu trúc (`questions.json` + `.md`),
   2 engine — `easyocr` (offline, mặc định) và `llm` (Anthropic vision, chính xác hơn).
 - Lệnh `quiz_extractor.watch`: watcher (polling) tự chạy pipeline khi có video mới trong
@@ -31,6 +35,14 @@ phiên bản tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
   trước) nên cuộn chậm tích lũy vẫn được OCR -> không sót câu.
 
 ### Fixed
+- Header không còn bị xén nửa trên: `_pick_source` bỏ frame có header sát mép content
+  (header vắt qua mép trên -> cắt mất chữ), ưu tiên frame header nguyên vẹn.
+- Đệm trên ảnh thoáng hơn, bao trọn viền info box: `F_TOP_MARGIN` 0.006 → 0.03 (đủ chừa
+  viền khung "Question N" + khoảng trắng phía trên, không dính sát mép).
+- Hỗ trợ layout desktop 2 cột: nới `F_HEAD_SPAN` 0.13 → 0.20 (header→marker giãn hơn theo
+  tỉ lệ H ở màn ngang) để header không bị anchor loại nhầm. Vẫn nhỏ hơn khoảng cách tới
+  marker câu kế ở layout dọc nên không sinh header giả.
+- Bỏ "Question 0" giả (header bị crop xén -> OCR đọc số thành 0): chỉ nhận số câu >= 1.
 - Câu dài/cuối trang không còn bị cắt đáp án: tail chọn frame header cao nhất (đủ chỗ cả block).
 - Đáp án cuối (vd câu 40 đáp án d) không còn bị cắt dòng chót: mép dưới content (`F_CONTENT_BOT`
   0.827 → 0.856) quá bảo thủ nên cắt luôn dòng cuối nội dung web; nới tới ngay trên overlay

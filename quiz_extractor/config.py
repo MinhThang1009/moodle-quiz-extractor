@@ -31,10 +31,10 @@ F_HEAD_XLEFT = (
     0.12  # 'Question' chỉ là header nếu ở mép trái (loại 'Flag question') (theo W)
 )
 F_HEAD_SPAN = (
-    0.13  # header thật phải có marker (Marked out of/Not yet) ngay dưới (theo H)
+    0.20  # header thật phải có marker (Marked out of/Not yet) ngay dưới (theo H)
 )
 F_FEAT_X0, F_FEAT_X1 = 0.03, 0.83  # cột tính sharpness, né nút record nổi (theo W)
-F_TOP_MARGIN = 0.006  # chừa mép trên header khi cắt (theo H)
+F_TOP_MARGIN = 0.03  # chừa trên header khi cắt: bao viền info box + đệm (theo H)
 F_INCOMPLETE = 0.25  # ảnh câu thấp hơn ngưỡng này (theo H) -> nghi thiếu nội dung
 
 # --- Hằng số ảnh (màu tuyệt đối / số frame, mọi độ phân giải) ---

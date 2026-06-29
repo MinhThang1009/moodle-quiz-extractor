@@ -93,6 +93,7 @@ python -m quiz_extractor --force-ocr
 | `--step` | `4` | OCR mỗi `STEP` frame (nhỏ hơn = kỹ hơn, chậm hơn) |
 | `--force-ocr` | `false` | Xoá cache, OCR lại từ đầu |
 | `--config` | – | JSON override marker/tỉ lệ template (xem [Template khác](#template-khác)) |
+| `--no-auto-crop` | `false` | Tắt tự suy vùng nội dung, dùng tỉ lệ cố định trong config |
 
 Kết quả: `output/questions/question-01.png`, `question-02.png`, …
 
@@ -102,19 +103,21 @@ Kết quả: `output/questions/question-01.png`, `question-02.png`, …
 
 ### Template khác
 
-Bám text Moodle tiếng Anh + screen-recording điện thoại. Với Moodle **ngôn ngữ/theme
-khác** hoặc quay **desktop** (tỉ lệ chrome khác), truyền `--config quiz.json` để override
-không cần sửa code:
+**Vùng nội dung (chrome trình duyệt / status bar / overlay) tự nhận diện** — chạy thẳng cả
+khi đổi hẳn layout (điện thoại dọc ↔ desktop ngang, độ phân giải khác) **không cần config**.
+Chỉ còn **markers ngôn ngữ** là phải override khi Moodle dùng ngôn ngữ/theme khác (vd "Câu
+hỏi N"), vì không suy ra từ pixel được:
 
 ```json
 {
   "QUESTION_RE": "câu hỏi\\s*(\\d{1,3})",
   "QUIZ_MARKERS": ["chưa trả lời", "đánh dấu"],
-  "OCR_LANGS": ["vi"],
-  "F_CONTENT_TOP": 0.0,
-  "F_CONTENT_BOT": 1.0
+  "OCR_LANGS": ["vi"]
 }
 ```
+
+> Auto-crop bật mặc định; detect bất thường thì fallback tỉ lệ cố định. Muốn **ép** vùng
+> nội dung thì `--no-auto-crop` rồi đặt `F_CONTENT_TOP/BOT` trong `--config`.
 
 ## Xuất text (OCR ảnh câu)
 
