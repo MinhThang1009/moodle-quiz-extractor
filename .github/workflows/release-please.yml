@@ -23,7 +23,8 @@ jobs:
       - uses: googleapis/release-please-action@v5
         with:
           release-type: "python"
-          # Dùng PAT (repo secret RELEASE_PLEASE_TOKEN), KHÔNG dùng GITHUB_TOKEN mặc định,
-          # để tag/release tạo ra kích hoạt được workflow khác (release.yml). Sự kiện do
-          # GITHUB_TOKEN tạo không kích hoạt workflow khác (theo thiết kế của GitHub).
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          # Ưu tiên PAT (repo secret RELEASE_PLEASE_TOKEN) để tag/release tạo ra kích hoạt
+          # được workflow khác (release.yml) — sự kiện do GITHUB_TOKEN tạo KHÔNG kích hoạt
+          # workflow khác. Fallback GITHUB_TOKEN để workflow không fail khi chưa cấu hình
+          # PAT (lúc đó release.yml cần chạy thủ công khi tag).
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
