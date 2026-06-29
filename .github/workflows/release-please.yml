@@ -22,9 +22,10 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@v5
         with:
-          release-type: "python"
-          # Ưu tiên PAT (repo secret RELEASE_PLEASE_TOKEN) để tag/release tạo ra kích hoạt
-          # được workflow khác (release.yml) — sự kiện do GITHUB_TOKEN tạo KHÔNG kích hoạt
-          # workflow khác. Fallback GITHUB_TOKEN để workflow không fail khi chưa cấu hình
-          # PAT (lúc đó release.yml cần chạy thủ công khi tag).
+          # Manifest mode: cấu hình ở release-please-config.json + .release-please-manifest.json
+          # -> bump cả CHANGELOG lẫn __version__ trong quiz_extractor/__init__.py (extra-files).
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          # Ưu tiên PAT (RELEASE_PLEASE_TOKEN) để tag kích hoạt release.yml; fallback
+          # GITHUB_TOKEN để workflow không fail khi chưa cấu hình PAT.
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
