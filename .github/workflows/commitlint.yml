@@ -1,0 +1,20 @@
+name: Commitlint
+
+# Bắt buộc Conventional Commits trên pull request. release-please suy ra bump version
+# và CHANGELOG từ các message này, nên commit sai định dạng sẽ làm hỏng versioning.
+# Cần file cấu hình commitlint.config.js ở thư mục gốc.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: wagoid/commitlint-github-action@v6

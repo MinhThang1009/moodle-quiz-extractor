@@ -44,3 +44,10 @@ jobs:
         run: pytest
       - name: CLI --help (smoke)
         run: python -m quiz_extractor --help
+
+  ci-success:
+    name: CI success
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Tất cả job CI đã pass."

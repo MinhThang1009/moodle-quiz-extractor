@@ -1,0 +1,29 @@
+name: Dependabot auto-merge
+
+# Tự merge PR của Dependabot cho update tương thích (patch + minor) khi CI xanh.
+# Update major để review thủ công (có thể có breaking change).
+#
+# Cần: branch protection "Require status checks to pass" (để --auto chờ CI) và bật
+# "Allow auto-merge" của repo (gh repo edit --enable-auto-merge).
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
+    steps:
+      - name: Lấy metadata Dependabot
+        id: meta
+        uses: dependabot/fetch-metadata@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Bật auto-merge cho update patch và minor
+        if: ${{ steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor' }}
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --auto --squash "$PR_URL"

@@ -1,0 +1,29 @@
+name: release-please
+
+# Mỗi lần push lên main, release-please mở/cập nhật 1 "release PR" bump version +
+# CHANGELOG từ Conventional Commits. Merge PR đó -> tạo git tag + GitHub Release ->
+# kích hoạt release.yml build và đính kèm artifact.
+#
+# Lưu ý: project dùng dynamic version từ quiz_extractor/__init__.py (__version__).
+# Kiểm tra release PR đầu tiên có bump đúng file đó không; nếu chưa, cấu hình thêm
+# extra-files / version-file. Pin @v5 (current major).
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v5
+        with:
+          release-type: "python"
+          # Dùng PAT (repo secret RELEASE_PLEASE_TOKEN), KHÔNG dùng GITHUB_TOKEN mặc định,
+          # để tag/release tạo ra kích hoạt được workflow khác (release.yml). Sự kiện do
+          # GITHUB_TOKEN tạo không kích hoạt workflow khác (theo thiết kế của GitHub).
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
