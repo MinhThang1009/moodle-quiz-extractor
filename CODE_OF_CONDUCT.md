@@ -23,8 +23,8 @@ Hành vi không chấp nhận:
 
 ## Thực thi
 
-Báo cáo hành vi vi phạm tới `quang.minh99@shelterseed.shop`. Mọi khiếu nại sẽ được xem
-xét và xử lý phù hợp, bảo mật danh tính người báo cáo.
+Báo cáo hành vi vi phạm tới `75535033+MinhThang1009@users.noreply.github.com`. Mọi khiếu
+nại sẽ được xem xét và xử lý phù hợp, bảo mật danh tính người báo cáo.
 
 ## Ghi nhận
 

@@ -1,0 +1,43 @@
+name: Release
+
+# Build và publish GitHub Release khi đẩy tag phiên bản (v*).
+# GitHub Release dựa trên git tag.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Build sdist + wheel
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+
+      - name: Publish hoặc cập nhật GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Nếu release cho tag này đã tồn tại (vd release-please tạo) -> đính kèm artifact;
+        # nếu chưa -> tạo mới (luồng tag thủ công). Chỉ phép dò tồn tại mới ẩn output, nên
+        # lỗi create/upload thật (auth, mạng) vẫn báo rõ.
+        run: |
+          set -euo pipefail
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" dist/* --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" dist/* \
+              --title "${GITHUB_REF_NAME}" --generate-notes
+          fi

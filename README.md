@@ -21,7 +21,6 @@ _Không sót câu · Không lặp ảnh · Cắt khít từng câu · Chạy đ�
 
 - [Vấn đề](#vấn-đề)
 - [Tính năng](#tính-năng)
-- [Demo](#demo)
 - [Yêu cầu](#yêu-cầu)
 - [Cài đặt](#cài-đặt)
 - [Sử dụng](#sử-dụng)
