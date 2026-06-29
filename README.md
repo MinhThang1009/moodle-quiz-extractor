@@ -51,14 +51,6 @@ này: mỗi câu hỏi → đúng **một ảnh** sạch, đầy đủ.
 - ✅ **Portable** — bám cấu trúc *text* Moodle + ngưỡng theo tỉ lệ `H/W` → chạy mọi video cùng template, mọi độ phân giải, không sửa code.
 - ✅ **Cache OCR** — lần đầu OCR vài phút, lần sau gần như tức thì.
 
-## Demo
-
-Mỗi câu hỏi được cắt thành 1 ảnh riêng — đầy đủ header + đề + đáp án:
-
-<p align="center">
-  <img src="docs/demo.png" alt="Ví dụ một câu hỏi được trích xuất" width="320">
-</p>
-
 ## Yêu cầu
 
 - Python **3.10+**
