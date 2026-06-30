@@ -182,6 +182,7 @@ flowchart LR
 ```text
 .
 ├── quiz_extractor/        # package chính
+│   ├── __init__.py        # version (__version__)
 │   ├── config.py          # marker template Moodle, tỉ lệ layout, hằng số ảnh
 │   ├── geometry.py        # suy ngưỡng pixel từ (H, W) video
 │   ├── ocr.py             # đọc video, auto-detect vùng nội dung, OCR header, cache
