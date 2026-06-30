@@ -5,6 +5,13 @@ Tất cả thay đổi đáng chú ý của dự án được ghi ở đây.
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/),
 phiên bản tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 
+## [1.1.4](https://github.com/MinhThang1009/moodle-quiz-extractor/compare/v1.1.3...v1.1.4) (2026-06-30)
+
+
+### Documentation
+
+* thêm __init__.py vào cây thư mục trong README ([#14](https://github.com/MinhThang1009/moodle-quiz-extractor/issues/14)) ([10cc885](https://github.com/MinhThang1009/moodle-quiz-extractor/commit/10cc8859ae4043494154757734baa746beae1b6c))
+
 ## [1.1.3](https://github.com/MinhThang1009/moodle-quiz-extractor/compare/v1.1.2...v1.1.3) (2026-06-30)
 
 
