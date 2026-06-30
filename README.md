@@ -217,7 +217,7 @@ kém nét hơn (thuật toán đã chọn frame nét nhất có thể).
 - [x] Xuất text từ ảnh câu (`questions.json` + `.md`, EasyOCR / vision LLM).
 - [x] Tự nhận diện vùng nội dung — chạy mọi layout không cần config.
 - [x] GPU auto-detect cho EasyOCR.
-- [ ] Tự upscale + khử nhiễu ảnh để OCR câu mờ chính xác hơn.
+- [ ] Khử nhiễu ảnh trước OCR (giảm sai dấu ở câu mờ).
 - [ ] Hỗ trợ thêm template LMS khác (Google Forms, Azota…) qua file cấu hình marker.
 - [ ] Xuất PDF gộp tất cả câu.
 
