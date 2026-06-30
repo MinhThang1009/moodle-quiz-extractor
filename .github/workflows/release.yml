@@ -41,3 +41,25 @@ jobs:
             gh release create "${GITHUB_REF_NAME}" dist/* \
               --title "${GITHUB_REF_NAME}" --generate-notes
           fi
+
+  pypi:
+    name: Publish PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC Trusted Publishing — không cần token/secret
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Build sdist + wheel
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+      # Yêu cầu: cấu hình Trusted Publisher trên PyPI (project -> Publishing) cho repo
+      # MinhThang1009/moodle-quiz-extractor, workflow release.yml. Chưa cấu hình -> job này fail
+      # nhưng KHÔNG ảnh hưởng job release (GitHub Release vẫn tạo).
+      - name: Publish lên PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
