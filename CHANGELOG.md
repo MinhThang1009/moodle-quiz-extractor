@@ -5,6 +5,13 @@ Tất cả thay đổi đáng chú ý của dự án được ghi ở đây.
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/),
 phiên bản tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 
+## [1.1.6](https://github.com/MinhThang1009/moodle-quiz-extractor/compare/v1.1.5...v1.1.6) (2026-07-02)
+
+
+### Bug Fixes
+
+* **ci:** thêm environment cho PyPI ([608e9ba](https://github.com/MinhThang1009/moodle-quiz-extractor/commit/608e9ba16347f5d39e8c170845e0e0e50bc08785))
+
 ## [1.1.5](https://github.com/MinhThang1009/moodle-quiz-extractor/compare/v1.1.4...v1.1.5) (2026-07-02)
 
 
