@@ -5,6 +5,13 @@ Tất cả thay đổi đáng chú ý của dự án được ghi ở đây.
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/),
 phiên bản tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 
+## [1.1.5](https://github.com/MinhThang1009/moodle-quiz-extractor/compare/v1.1.4...v1.1.5) (2026-07-02)
+
+
+### Bug Fixes
+
+* siết validation và xử lý output an toàn ([bbd03e6](https://github.com/MinhThang1009/moodle-quiz-extractor/commit/bbd03e6919f0397bb7044275bba94ceae1f50a4c))
+
 ## [1.1.4](https://github.com/MinhThang1009/moodle-quiz-extractor/compare/v1.1.3...v1.1.4) (2026-06-30)
 
 
