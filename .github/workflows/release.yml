@@ -45,6 +45,7 @@ jobs:
   pypi:
     name: Publish PyPI
     runs-on: ubuntu-latest
+    environment: pypi
     permissions:
       contents: read
       id-token: write # OIDC Trusted Publishing — không cần token/secret
