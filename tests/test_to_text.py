@@ -1,5 +1,11 @@
 """parse_question: tách câu hỏi + 4 đáp án từ các dòng OCR (logic thuần, không OCR)."""
 
+import sys
+import types
+from pathlib import Path
+
+import pytest
+
 from quiz_extractor.to_text import _llm_result, parse_question
 
 
@@ -17,6 +23,31 @@ def test_llm_result_maps_options_by_order():
 
 def test_llm_result_tolerates_missing_fields():
     assert _llm_result({}, 1) == {"number": 1, "question": "", "options": {}}
+
+
+def test_anthropic_lower_bound_matches_structured_outputs_requirement():
+    root = Path(__file__).resolve().parents[1]
+    assert "anthropic>=0.115" in (root / "pyproject.toml").read_text(encoding="utf-8")
+    assert "anthropic>=0.115" in (root / "README.md").read_text(encoding="utf-8")
+
+
+def test_extract_text_rejects_unreadable_image(tmp_path, monkeypatch):
+    from quiz_extractor import to_text
+
+    class FakeReader:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    fake_easyocr = types.ModuleType("easyocr")
+    fake_easyocr.Reader = FakeReader
+    monkeypatch.setitem(sys.modules, "easyocr", fake_easyocr)
+    monkeypatch.setattr("quiz_extractor.ocr.gpu_available", lambda: False)
+    images_dir = tmp_path / "questions"
+    images_dir.mkdir()
+    (images_dir / "question-01.png").write_bytes(b"not a png")
+
+    with pytest.raises(SystemExit, match="Không đọc được ảnh"):
+        to_text.extract_text(images_dir, tmp_path / "out", "easyocr", "unused")
 
 
 def test_parse_question_splits_four_options():

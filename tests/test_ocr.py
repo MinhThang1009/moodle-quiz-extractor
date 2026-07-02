@@ -16,12 +16,20 @@ GEO = Geom(1040, 480)
 
 def test_cache_roundtrip_and_resume_flags(tmp_path):
     cp = tmp_path / "c.pkl"
-    _save_cache(cp, GEO, 4, [(0, [(1, 10)])], next_idx=8, complete=False)
+    _save_cache(cp, GEO, 4, 10, 1050, [(0, [(1, 10)])], next_idx=8, complete=False)
     cached = _read_cache(cp)
-    assert _matches(cached, GEO, 4)
+    assert _matches(cached, GEO, 4, 10, 1050)
     assert not _is_complete(cached) and cached["next"] == 8  # cache dở -> resume
-    _save_cache(cp, GEO, 4, [(0, [(1, 10)])], next_idx=999, complete=True)
+    _save_cache(cp, GEO, 4, 10, 1050, [(0, [(1, 10)])], next_idx=999, complete=True)
     assert _is_complete(_read_cache(cp))
+
+
+def test_cache_match_requires_content_offsets(tmp_path):
+    cp = tmp_path / "c.pkl"
+    _save_cache(cp, GEO, 4, 10, 1050, [], next_idx=0, complete=True)
+    cached = _read_cache(cp)
+    assert _matches(cached, GEO, 4, 10, 1050)
+    assert not _matches(cached, GEO, 4, 11, 1051)
 
 
 def test_legacy_cache_treated_complete(tmp_path):

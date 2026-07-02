@@ -194,11 +194,13 @@ def _read_cache(cache_path: Path) -> dict | None:
         return None
 
 
-def _matches(cached: dict, geo: Geom, step: int) -> bool:
+def _matches(cached: dict, geo: Geom, step: int, c_top: int, c_bot: int) -> bool:
     return (
         cached.get("h") == geo.H
         and cached.get("w") == geo.W
         and cached.get("step") == step
+        and cached.get("c_top") == c_top
+        and cached.get("c_bot") == c_bot
     )
 
 
@@ -207,12 +209,14 @@ def _is_complete(cached: dict) -> bool:
     return bool(cached.get("complete", "next" not in cached))
 
 
-def _save_cache(cache_path, geo, step, data, next_idx, complete) -> None:
+def _save_cache(cache_path, geo, step, c_top, c_bot, data, next_idx, complete) -> None:
     """Ghi cache nguyên tử (tmp + replace) để Ctrl+C giữa chừng không làm hỏng file."""
     payload = {
         "h": geo.H,
         "w": geo.W,
         "step": step,
+        "c_top": c_top,
+        "c_bot": c_bot,
         "data": data,
         "next": next_idx,
         "complete": complete,
@@ -263,7 +267,11 @@ def build_cache(
     # Resume nếu có cache DỞ khớp (size, step) -> tiếp tục từ frame còn lại.
     start, data = 0, []
     cached = _read_cache(cache_path)
-    if cached and _matches(cached, geo, step) and not _is_complete(cached):
+    if (
+        cached
+        and _matches(cached, geo, step, c_top, c_bot)
+        and not _is_complete(cached)
+    ):
         start = int(cached.get("next", 0))
         data = list(cached.get("data", []))
         logger.info("Tiếp tục OCR từ frame %d (đã có %d câu).", start, len(data))
@@ -303,11 +311,13 @@ def build_cache(
                 ocred += 1
                 _progress(start // step + scanned, total, idx, headers, skipped)
                 if ocred % SAVE_EVERY == 0:
-                    _save_cache(cache_path, geo, step, data, idx + step, False)
+                    _save_cache(
+                        cache_path, geo, step, c_top, c_bot, data, idx + step, False
+                    )
         idx += 1
     cap.release()
 
-    _save_cache(cache_path, geo, step, data, idx, True)
+    _save_cache(cache_path, geo, step, c_top, c_bot, data, idx, True)
     sys.stdout.write("\n")
     sys.stdout.flush()
     logger.info(
@@ -325,7 +335,7 @@ def load_or_build_cache(
 ) -> list:
     """Dùng cache nếu khớp & hoàn tất; cache dở -> OCR tiếp; lệch -> OCR lại."""
     cached = _read_cache(cache_path)
-    if cached and _matches(cached, geo, step):
+    if cached and _matches(cached, geo, step, c_top, c_bot):
         if _is_complete(cached):
             logger.info("Dùng cache %s.", cache_path)
             return cached["data"]

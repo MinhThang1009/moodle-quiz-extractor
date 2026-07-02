@@ -81,3 +81,29 @@ def test_cache_complete_reused_without_ocr(tmp_path, monkeypatch):
     monkeypatch.delitem(sys.modules, "easyocr", raising=False)
     result = extract_questions(video, out, cache, step=4, auto_crop=False)
     assert result["saved"] == [1, 2]
+
+
+def test_extract_questions_keeps_non_question_png(tmp_path, monkeypatch):
+    _patch_easyocr(monkeypatch)
+    video = tmp_path / "v.avi"
+    _make_video(video)
+    out = tmp_path / "q"
+    out.mkdir()
+    (out / "logo.png").write_bytes(b"keep")
+    (out / "question-99.png").write_bytes(b"stale")
+
+    result = extract_questions(video, out, tmp_path / "c.pkl", step=4, auto_crop=False)
+
+    assert result["saved"] == [1, 2]
+    assert (out / "logo.png").exists()
+    assert not (out / "question-99.png").exists()
+
+
+def test_extract_questions_raises_when_image_write_fails(tmp_path, monkeypatch):
+    _patch_easyocr(monkeypatch)
+    video = tmp_path / "v.avi"
+    _make_video(video)
+    monkeypatch.setattr("quiz_extractor.extractor.cv2.imwrite", lambda *a, **k: False)
+
+    with pytest.raises(SystemExit, match="Không ghi được ảnh"):
+        extract_questions(video, tmp_path / "q", tmp_path / "c.pkl", 4, auto_crop=False)

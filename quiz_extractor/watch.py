@@ -24,6 +24,28 @@ from .to_text import DEFAULT_LLM_MODEL, extract_text
 logger = logging.getLogger(__name__)
 
 
+def positive_int(value: str) -> int:
+    """argparse type: số nguyên dương."""
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("phải là số nguyên") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("phải > 0")
+    return parsed
+
+
+def positive_float(value: str) -> float:
+    """argparse type: số thực dương."""
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("phải là số") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("phải > 0")
+    return parsed
+
+
 def _outputs(out_root: Path, video: Path) -> tuple[Path, Path, Path]:
     """(out_dir, questions_dir, cache_path) cho 1 video."""
     out_dir = out_root / video.stem
@@ -47,7 +69,7 @@ def _already_done(out_root: Path, video: Path, reprocess: bool) -> bool:
     """True nếu video đã có ảnh câu -> bỏ qua (trừ khi --reprocess)."""
     if reprocess:
         return False
-    return any(_outputs(out_root, video)[1].glob("*.png"))
+    return any(_outputs(out_root, video)[1].glob("question-*.png"))
 
 
 def _worker_init(threads: int) -> None:
@@ -61,9 +83,16 @@ def _worker_init(threads: int) -> None:
 
 
 def process_video(
-    video: Path, out_root: Path, step: int, to_text: str, model: str
+    video: Path,
+    out_root: Path,
+    step: int,
+    to_text: str,
+    model: str,
+    config_path: Path | None = None,
 ) -> None:
     """Chạy pipeline cho 1 video: trích ảnh câu, rồi OCR text nếu bật."""
+    if config_path:
+        cfg.load_overrides(config_path)
     out_dir, questions_dir, cache = _outputs(out_root, video)
     os.environ["QUIZ_LABEL"] = video.name  # nhãn cho dòng tiến độ OCR (phân biệt video)
     logger.info("=== Xử lý %s -> %s/ ===", video.name, out_dir)
@@ -85,6 +114,7 @@ def watch(
     reprocess: bool,
     once: bool,
     workers: int,
+    config_path: Path | None = None,
 ) -> None:
     if workers > 1:
         _watch_parallel(
@@ -98,15 +128,34 @@ def watch(
             reprocess,
             once,
             workers,
+            config_path,
         )
     else:
         _watch_sequential(
-            input_dir, out_root, step, to_text, model, interval, stable, reprocess, once
+            input_dir,
+            out_root,
+            step,
+            to_text,
+            model,
+            interval,
+            stable,
+            reprocess,
+            once,
+            config_path,
         )
 
 
 def _watch_sequential(
-    input_dir, out_root, step, to_text, model, interval, stable, reprocess, once
+    input_dir,
+    out_root,
+    step,
+    to_text,
+    model,
+    interval,
+    stable,
+    reprocess,
+    once,
+    config_path,
 ) -> None:
     seen: dict[Path, float] = {}  # video -> mtime đã xử lý
     logger.info("Theo dõi %s/ (mỗi %.0fs). Ctrl+C để dừng.", input_dir, interval)
@@ -121,7 +170,7 @@ def _watch_sequential(
             if not _is_stable(video, stable):
                 continue  # đang copy, để lần quét sau
             try:
-                process_video(video, out_root, step, to_text, model)
+                process_video(video, out_root, step, to_text, model, config_path)
             except Exception:  # noqa: BLE001 - watcher không được chết vì 1 video lỗi
                 logger.exception("Lỗi khi xử lý %s, bỏ qua.", video.name)
             seen[video] = video.stat().st_mtime
@@ -141,6 +190,7 @@ def _watch_parallel(
     reprocess,
     once,
     workers,
+    config_path,
 ) -> None:
     threads = max(1, (os.cpu_count() or 4) // workers)
     ex = ProcessPoolExecutor(
@@ -159,7 +209,9 @@ def _watch_parallel(
                 if not _already_done(out_root, v, reprocess) and _is_stable(v, stable)
             ]
             futs = {
-                ex.submit(process_video, v, out_root, step, to_text, model): v
+                ex.submit(
+                    process_video, v, out_root, step, to_text, model, config_path
+                ): v
                 for v in vids
             }
             for v in vids:
@@ -180,7 +232,15 @@ def _watch_parallel(
                 if not _is_stable(video, stable):
                     continue
                 inflight[video] = (
-                    ex.submit(process_video, video, out_root, step, to_text, model),
+                    ex.submit(
+                        process_video,
+                        video,
+                        out_root,
+                        step,
+                        to_text,
+                        model,
+                        config_path,
+                    ),
                     mtime,
                 )
                 logger.info("▶ Bắt đầu %s", video.name)
@@ -220,7 +280,7 @@ def main() -> None:
         "--output", type=Path, default=Path("output"), help="Thư mục gốc xuất kết quả"
     )
     parser.add_argument(
-        "--step", type=int, default=cfg.DEFAULT_STEP, help="OCR mỗi STEP frame"
+        "--step", type=positive_int, default=cfg.DEFAULT_STEP, help="OCR mỗi STEP frame"
     )
     parser.add_argument(
         "--to-text",
@@ -232,11 +292,11 @@ def main() -> None:
         "--model", default=DEFAULT_LLM_MODEL, help="Model khi --to-text llm"
     )
     parser.add_argument(
-        "--interval", type=float, default=5.0, help="Chu kỳ quét (giây)"
+        "--interval", type=positive_float, default=5.0, help="Chu kỳ quét (giây)"
     )
     parser.add_argument(
         "--stable",
-        type=float,
+        type=positive_float,
         default=2.0,
         help="Đợi size ổn định bấy nhiêu giây (file copy xong)",
     )
@@ -248,7 +308,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--workers",
-        type=int,
+        type=positive_int,
         default=1,
         help="Số video xử lý song song (>1 = process pool)",
     )
@@ -274,6 +334,7 @@ def main() -> None:
             args.reprocess,
             args.once,
             args.workers,
+            args.config,
         )
     except KeyboardInterrupt:
         logger.info("Đã dừng watcher.")

@@ -124,7 +124,7 @@ Chuyển ảnh câu thành text có cấu trúc (`output/questions.json` + `ques
 python -m quiz_extractor.to_text
 
 # Chính xác hơn: vision LLM (Anthropic) — cần ANTHROPIC_API_KEY + có chi phí
-pip install "anthropic>=0.40"
+pip install "anthropic>=0.115"
 export ANTHROPIC_API_KEY=sk-ant-...        # Windows: $env:ANTHROPIC_API_KEY="..."
 python -m quiz_extractor.to_text --engine llm                 # model mặc định claude-opus-4-8
 python -m quiz_extractor.to_text --engine llm --model claude-haiku-4-5   # rẻ hơn

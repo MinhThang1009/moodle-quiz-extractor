@@ -20,6 +20,17 @@ def _force_utf8() -> None:
             stream.reconfigure(encoding="utf-8")
 
 
+def positive_int(value: str) -> int:
+    """argparse type: số nguyên dương."""
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("phải là số nguyên") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("phải > 0")
+    return parsed
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="quiz_extractor",
@@ -35,7 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--cache", type=Path, default=cfg.DEFAULT_CACHE, help="File cache OCR"
     )
     parser.add_argument(
-        "--step", type=int, default=cfg.DEFAULT_STEP, help="OCR mỗi STEP frame"
+        "--step", type=positive_int, default=cfg.DEFAULT_STEP, help="OCR mỗi STEP frame"
     )
     parser.add_argument(
         "--force-ocr", action="store_true", help="Bỏ cache, OCR lại từ đầu"

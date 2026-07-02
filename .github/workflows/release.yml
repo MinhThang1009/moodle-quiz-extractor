@@ -46,6 +46,7 @@ jobs:
     name: Publish PyPI
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       id-token: write # OIDC Trusted Publishing — không cần token/secret
     steps:
       - name: Checkout

@@ -112,7 +112,7 @@ def extract_questions(
     frames = read_content_frames(video_path, needed, c_top, c_bot)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    for stale in output_dir.glob("*.png"):
+    for stale in output_dir.glob("question-*.png"):
         stale.unlink()
 
     saved, incomplete = [], []
@@ -130,7 +130,9 @@ def extract_questions(
             crop = frames[best][top : hard - m]
         else:  # câu cuối trang -> cắt tới đáy content rồi bỏ khoảng trắng thừa
             crop = trim_trailing_white(frames[best][top:height])
-        cv2.imwrite(str(output_dir / f"question-{number:02d}.png"), crop)
+        target = output_dir / f"question-{number:02d}.png"
+        if not cv2.imwrite(str(target), crop):
+            raise SystemExit(f"Không ghi được ảnh: {target}")
         saved.append(number)
         if crop.shape[0] < incomplete_h:  # ảnh quá ngắn -> nghi thiếu nội dung
             incomplete.append(number)

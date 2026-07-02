@@ -102,8 +102,11 @@ def _questions_easyocr(images: list) -> list:
     reader = easyocr.Reader(list(cfg.OCR_LANGS), gpu=gpu_available(), verbose=False)
     results = []
     for path in images:
+        image = cv2.imread(str(path))
+        if image is None:
+            raise SystemExit(f"Không đọc được ảnh: {path}")
         up = cv2.resize(
-            cv2.imread(str(path)),
+            image,
             None,
             fx=UPSCALE,
             fy=UPSCALE,
