@@ -13,7 +13,7 @@ authors = [
     { name = "MinhThang1009", email = "75535033+MinhThang1009@users.noreply.github.com" },
 ]
 dependencies = [
-    "opencv-python>=4.8,<5",
+    "opencv-python>=4.8,<6",
     "numpy>=1.24,<3",
     "easyocr>=1.7,<2",
 ]
