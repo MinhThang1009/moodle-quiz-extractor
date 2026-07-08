@@ -3,4 +3,10 @@
 // Dùng .mjs (ESM) để khớp loại module action yêu cầu, tránh lỗi "module is not defined".
 export default {
   extends: ['@commitlint/config-conventional'],
+  ignores: [
+    (message) =>
+      message.includes(
+        'Signed-off-by: dependabot[bot] <support@github.com>',
+      ),
+  ],
 };
